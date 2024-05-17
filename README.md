@@ -29,8 +29,6 @@ pip install -U pynrrd
 pip install -U gdown
 
 pip install -U git+https://github.com/Project-MONAI/GenerativeModels.git 
-
-python script/setup.py # install pytorch3d
 ```
 
 Check torch has been compiled with CUDA
@@ -51,6 +49,8 @@ To medical_resnet50_23datasets = "medicalnet_resnet50_23datasets"
 -----
 ```
 git clone https://github.com/tmquan/nvmedcontrol
+cd nvmedcontrol
+python script/setup.py # install pytorch3d
 ```
 
 Change paths of folders in conf/hparams.yaml to the located data
