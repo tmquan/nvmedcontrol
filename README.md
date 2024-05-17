@@ -47,7 +47,7 @@ Edit perceptual loss monai
 Line 32
 From medical_resnet50_23datasets = "medical_resnet50_23datasets"
 To medical_resnet50_23datasets = "medicalnet_resnet50_23datasets"
-
+```
 
 Change paths of folders in conf/hparams.yaml to the located data
 ```
