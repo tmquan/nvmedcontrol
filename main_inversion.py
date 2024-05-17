@@ -180,9 +180,9 @@ class NVLightningModule(LightningModule):
             num_res_units=2, 
             kernel_size=3, 
             up_kernel_size=3, 
-            # act=("LeakyReLU", {"inplace": True}), 
-            # norm=Norm.BATCH,
-            # dropout=0.5
+            act=("LeakyReLU", {"inplace": True}), 
+            norm=Norm.BATCH,
+            dropout=0.5
         )
 
         if self.train_cfg.perceptual:
@@ -586,7 +586,7 @@ class NVLightningModule(LightningModule):
         pass
 
     def configure_optimizers(self):
-        optimizer = torch.optim.AdamW(
+        optimizer = torch.optim.Adam(
             self.parameters(), lr=self.train_cfg.lr, betas=(0.5, 0.999)
         )
         scheduler = torch.optim.lr_scheduler.MultiStepLR(
