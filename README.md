@@ -1,5 +1,6 @@
 # nvmedcontrol
 
+```
 conda create --name=py310  python=3.10
 conda activate py310
 
@@ -29,5 +30,8 @@ pip install -U gdown
 pip install -U git+https://github.com/Project-MONAI/GenerativeModels.git 
 
 python script/setup.py # install pytorch3d
+```
 
+```
 python main_inversion.py --config-name hparams
+```
