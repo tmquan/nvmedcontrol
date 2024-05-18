@@ -586,7 +586,7 @@ class NVLightningModule(LightningModule):
         pass
 
     def configure_optimizers(self):
-        optimizer = torch.optim.Adam(
+        optimizer = torch.optim.AdamW(
             self.parameters(), lr=self.train_cfg.lr, betas=(0.5, 0.999)
         )
         scheduler = torch.optim.lr_scheduler.MultiStepLR(
