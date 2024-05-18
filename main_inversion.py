@@ -182,7 +182,7 @@ class NVLightningModule(LightningModule):
             up_kernel_size=3, 
             act=("LeakyReLU", {"inplace": True}), 
             norm=Norm.BATCH,
-            dropout=0.5
+            # dropout=0.5
         )
 
         if self.train_cfg.perceptual:
@@ -191,13 +191,13 @@ class NVLightningModule(LightningModule):
                 network_type="radimagenet_resnet50", 
                 is_fake_3d=False, 
                 pretrained=True,
-            )
+            ).float()
             self.p3dloss = PerceptualLoss(
                 spatial_dims=3, 
                 network_type="medicalnet_resnet50_23datasets", 
                 is_fake_3d=False, 
                 pretrained=True,
-            )
+            ).float()
 
         # @ Diffusion 
         self.unet2d_model = DiffusionModelUNet(
@@ -465,10 +465,10 @@ class NVLightningModule(LightningModule):
         loss = self.train_cfg.alpha * im2d_loss + self.train_cfg.gamma * im3d_loss
         
         if self.train_cfg.perceptual and stage=="train":
-            pc2d_loss = self.p2dloss(figure_xr_output_hidden_random, figure_ct_source_random) \
-                      + self.p2dloss(figure_xr_output_hidden_hidden, figure_xr_target_hidden) 
+            pc2d_loss = self.p2dloss(figure_xr_output_hidden_random.float(), figure_ct_source_random.float()) \
+                      + self.p2dloss(figure_xr_output_hidden_hidden.float(), figure_xr_target_hidden.float()) 
             loss += self.train_cfg.lamda * pc2d_loss    
-            pc3d_loss = self.p3dloss(volume_xr_output_hidden, image3d) 
+            pc3d_loss = self.p3dloss(volume_xr_output_hidden.float(), image3d.float()) 
             loss += self.train_cfg.lamda * pc3d_loss
 
         self.log(f"{stage}_loss", loss, on_step=(stage == "train"), prog_bar=True, logger=True, sync_dist=True, batch_size=B)
