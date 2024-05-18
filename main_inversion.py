@@ -155,7 +155,7 @@ class NVLightningModule(LightningModule):
             min_depth=self.model_cfg.min_depth,
             max_depth=self.model_cfg.max_depth,
             ndc_extent=self.model_cfg.ndc_extent,
-        )
+        ).float()
 
         # @ Diffusion 
         self.unet3d_model = DiffusionModelUNet(
@@ -260,7 +260,7 @@ class NVLightningModule(LightningModule):
 
     def forward_screen(self, image3d, cameras, is_training=False):
         image3d = self.correct_window(image3d, a_min=-1024, a_max=3071, b_min=-512, b_max=3071)
-        image2d = self.fwd_renderer(image3d, cameras, norm_type="standardized", stratified_sampling=is_training)
+        image2d = self.fwd_renderer(image3d.float(), cameras, norm_type="standardized", stratified_sampling=is_training)
         return image2d
    
     def flatten_cameras(self, cameras, zero_translation=True):
