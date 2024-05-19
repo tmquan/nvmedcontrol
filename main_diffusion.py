@@ -240,7 +240,7 @@ class NVLightningModule(LightningModule):
     def forward_volume(self, image2d, cameras, is_training=False):
         pass
     
-    def flatten_cameras(self, cameras, zero_translation=True):
+    def flatten_cameras(self, cameras, zero_translation=False):
         camera_ = cameras.clone()
         R = camera_.R
         if zero_translation:
@@ -254,7 +254,7 @@ class NVLightningModule(LightningModule):
         B = image2d.shape[0]
         timesteps = torch.zeros((B,), device=_device).long()if timesteps is None else timesteps
 
-        mat = self.flatten_cameras(cameras, zero_translation=True)
+        mat = self.flatten_cameras(cameras, zero_translation=False)
 
         results = self.inferer(
             inputs=image2d, 
@@ -270,7 +270,7 @@ class NVLightningModule(LightningModule):
         B = image2d.shape[0]
         timesteps = torch.zeros((B,), device=_device).long()if timesteps is None else timesteps
 
-        mat = self.flatten_cameras(cameras, zero_translation=True)
+        mat = self.flatten_cameras(cameras, zero_translation=False)
 
         results = self.inferer(
             inputs=image2d, 
@@ -317,14 +317,23 @@ class NVLightningModule(LightningModule):
         # figure_ct_latent_random = torch.randn_like(figure_ct_source_random)
         # figure_ct_latent_second = torch.randn_like(figure_ct_source_second)
 
-        figure_xr_latent_hidden = torch.empty_like(figure_xr_source_hidden)
-        figure_ct_latent_hidden = torch.empty_like(figure_ct_source_hidden)
-        figure_ct_latent_random = torch.empty_like(figure_ct_source_random)
-        figure_ct_latent_second = torch.empty_like(figure_ct_source_second)
-        nn.init.trunc_normal_(figure_xr_latent_hidden, mean=0.50, std=0.25, a=0, b=1)
-        nn.init.trunc_normal_(figure_ct_latent_hidden, mean=0.50, std=0.25, a=0, b=1)
-        nn.init.trunc_normal_(figure_ct_latent_random, mean=0.50, std=0.25, a=0, b=1)
-        nn.init.trunc_normal_(figure_ct_latent_second, mean=0.50, std=0.25, a=0, b=1)
+        # figure_xr_latent_hidden = torch.empty_like(figure_xr_source_hidden)
+        # figure_ct_latent_hidden = torch.empty_like(figure_ct_source_hidden)
+        # figure_ct_latent_random = torch.empty_like(figure_ct_source_random)
+        # figure_ct_latent_second = torch.empty_like(figure_ct_source_second)
+        # nn.init.trunc_normal_(figure_xr_latent_hidden, mean=0.50, std=0.25, a=0, b=1)
+        # nn.init.trunc_normal_(figure_ct_latent_hidden, mean=0.50, std=0.25, a=0, b=1)
+        # nn.init.trunc_normal_(figure_ct_latent_random, mean=0.50, std=0.25, a=0, b=1)
+        # nn.init.trunc_normal_(figure_ct_latent_second, mean=0.50, std=0.25, a=0, b=1)
+
+        volume_xr_latent = torch.empty_like(image3d)
+        volume_ct_latent = torch.empty_like(image3d)
+        nn.init.trunc_normal_(volume_xr_latent, mean=0.50, std=0.25, a=0, b=1)
+        nn.init.trunc_normal_(volume_ct_latent, mean=0.50, std=0.25, a=0, b=1)
+        figure_xr_latent_hidden = self.forward_screen(image3d=volume_xr_latent, cameras=view_hidden)
+        figure_ct_latent_hidden = self.forward_screen(image3d=volume_ct_latent, cameras=view_hidden)
+        figure_ct_latent_random = self.forward_screen(image3d=volume_ct_latent, cameras=view_random)
+        figure_ct_latent_second = self.forward_screen(image3d=volume_ct_latent, cameras=view_second)
 
         # Run the forward pass
         figure_dx_source_concat = torch.cat([figure_xr_source_hidden, figure_ct_source_hidden, figure_ct_source_random, figure_ct_source_second])
@@ -361,10 +370,10 @@ class NVLightningModule(LightningModule):
             figure_ct_target_random = self.ddpmsch.get_velocity(figure_ct_source_random, figure_ct_latent_random, timesteps)
             figure_ct_target_second = self.ddpmsch.get_velocity(figure_ct_source_second, figure_ct_latent_second, timesteps)
         
-        im2d_loss_dif = F.mse_loss(figure_xr_output_hidden, figure_xr_target_hidden) \
-                      + F.mse_loss(figure_ct_output_hidden, figure_ct_target_hidden) \
-                      + F.mse_loss(figure_ct_output_random, figure_ct_target_random) \
-                      + F.mse_loss(figure_ct_output_second, figure_ct_target_second) 
+        im2d_loss_dif = F.l1_loss(figure_xr_output_hidden, figure_xr_target_hidden) \
+                      + F.l1_loss(figure_ct_output_hidden, figure_ct_target_hidden) \
+                      + F.l1_loss(figure_ct_output_random, figure_ct_target_random) \
+                      + F.l1_loss(figure_ct_output_second, figure_ct_target_second) 
         
         im2d_loss = im2d_loss_dif
         self.log(f"{stage}_im2d_loss", im2d_loss, on_step=(stage == "train"), prog_bar=True, logger=True, sync_dist=True, batch_size=B)
