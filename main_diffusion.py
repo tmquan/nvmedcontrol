@@ -383,7 +383,7 @@ class NVLightningModule(LightningModule):
         if batch_idx == 0:
             # Sampling step for X-ray
             with torch.no_grad():
-                figure_dx_sample_concat = torch.randn_like(figure_dx_latent_concat)
+                figure_dx_sample_concat = figure_dx_latent_concat
                 cam = camera_dx_render_concat.clone()
                 R = cam.R
                 T = cam.T.unsqueeze_(-1)
