@@ -263,7 +263,7 @@ class NVLightningModule(LightningModule):
         image2d = self.fwd_renderer(image3d.float(), cameras, norm_type="standardized", stratified_sampling=is_training)
         return image2d
    
-    def flatten_cameras(self, cameras, zero_translation=True):
+    def flatten_cameras(self, cameras, zero_translation=False):
         camera_ = cameras.clone()
         R = camera_.R
         if zero_translation:
@@ -277,7 +277,7 @@ class NVLightningModule(LightningModule):
         B = image2d.shape[0]
         timesteps = torch.zeros((B,), device=_device).long() if timesteps is None else timesteps
 
-        mat = self.flatten_cameras(cameras, zero_translation=True)
+        mat = self.flatten_cameras(cameras, zero_translation=False)
 
         image2d = torch.rot90(image2d, 1, [2, 3])
         image2d = torch.flip(image2d, [3])
@@ -333,7 +333,7 @@ class NVLightningModule(LightningModule):
         B = image2d.shape[0]
         timesteps = torch.zeros((B,), device=_device).long() if timesteps is None else timesteps
 
-        mat = self.flatten_cameras(cameras, zero_translation=True)
+        mat = self.flatten_cameras(cameras, zero_translation=False)
 
         results = self.inferer(
             inputs=image2d, 
@@ -480,7 +480,7 @@ class NVLightningModule(LightningModule):
                 ###
                 figure_dx_sample_concat = torch.empty_like(figure_dx_latent_concat)
                 nn.init.trunc_normal_(figure_dx_sample_concat, mean=0.50, std=0.25, a=0, b=1)
-                mat = self.flatten_cameras(camera_dx_render_concat, zero_translation=True)
+                mat = self.flatten_cameras(camera_dx_render_concat, zero_translation=False)
                 self.ddimsch.set_timesteps(num_inference_steps=self.model_cfg.timesteps//10)
                 figure_dx_sample_concat = self.inferer.sample(
                     input_noise=figure_dx_sample_concat, 
