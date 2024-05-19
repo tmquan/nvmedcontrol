@@ -160,18 +160,18 @@ class NVLightningModule(LightningModule):
             ndc_extent=self.model_cfg.ndc_extent,
         )
 
-        # @ Diffusion 
-        self.net23d_model = DiffusionModelUNet(
-            spatial_dims=2,
-            in_channels=1,
-            out_channels=self.model_cfg.fov_depth*2,
-            num_channels=[256, 256, 512],
-            attention_levels=[False, False, True],
-            num_head_channels=[0, 0, 512],
-            num_res_blocks=2,
-            with_conditioning=True, 
-            cross_attention_dim=12, # Condition with straight/hidden view  # flatR | flatT
-        )
+        # # @ Diffusion 
+        # self.unet3d_model = DiffusionModelUNet(
+        #     spatial_dims=2,
+        #     in_channels=1,
+        #     out_channels=self.model_cfg.fov_depth*2,
+        #     num_channels=[256, 256, 512],
+        #     attention_levels=[False, False, True],
+        #     num_head_channels=[0, 0, 512],
+        #     num_res_blocks=2,
+        #     with_conditioning=True, 
+        #     cross_attention_dim=12, # Condition with straight/hidden view  # flatR | flatT
+        # )
 
         # @ Diffusion 
         self.unet2d_model = DiffusionModelUNet(
@@ -259,7 +259,7 @@ class NVLightningModule(LightningModule):
         results = self.inferer(
             inputs=image2d, 
             noise=noise, 
-            diffusion_model=self.net23d_model, 
+            diffusion_model=self.unet3d_model, 
             condition=mat.view(-1, 1, 12), 
             timesteps=timesteps
         ) 
