@@ -296,8 +296,7 @@ class NVLightningModule(LightningModule):
         # Let us resample the field of view 
         cam = cameras.clone()
         R = cam.R
-        # T = cam.T.unsqueeze_(-1)
-        T = torch.zeros_like(cam.T)
+        # T = torch.zeros_like(cam.T)
 
         z = torch.linspace(-1.0, 1.0, steps=self.model_cfg.vol_shape, device=_device)
         y = torch.linspace(-1.0, 1.0, steps=self.model_cfg.vol_shape, device=_device)
@@ -317,7 +316,8 @@ class NVLightningModule(LightningModule):
         # Let us resample the volume
         cam = cameras.clone()
         R = cam.R
-        T = torch.zeros_like(cam.T.unsqueeze_(-1))
+        T = cam.T.unsqueeze_(-1)
+        # T = torch.zeros_like(cam.T.unsqueeze_(-1))
         
         mat = torch.cat([R, T], dim=-1)
         inv = torch.cat([torch.inverse(R), -T], dim=-1)
