@@ -61,8 +61,8 @@ model:
   img_shape: ${data.img_shape}
   vol_shape: ${data.vol_shape}
   batch_size: ${data.batch_size}
-  n_pts_per_ray: 800
-  fov_depth: 800
+  n_pts_per_ray: 512
+  fov_depth: 512
   min_depth: 6.0
   max_depth: 10.0
   ndc_extent: 1.0
@@ -75,7 +75,7 @@ train:
   lr: 1e-4
   alpha: 1
   gamma: 1
-  perceptual: true
+  perceptual: false
   lamda: 5e-3
   batch_size: ${data.batch_size}
   epochs: 200
@@ -88,7 +88,7 @@ resume_from_checkpoint: null
 trainer:
   accelerator: auto
   devices: -1
-  precision: "16-mixed"
+  precision: 32
   strategy: auto
   max_epochs: ${train.epochs}
   enable_model_summary: true

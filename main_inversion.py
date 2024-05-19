@@ -416,9 +416,9 @@ class NVLightningModule(LightningModule):
             figure_ct_target_random = self.ddpmsch.get_velocity(figure_ct_source_random, figure_ct_latent_random, timesteps)
             figure_ct_target_second = self.ddpmsch.get_velocity(figure_ct_source_second, figure_ct_latent_second, timesteps)
         
-        im2d_loss_dif = F.mse_loss(figure_xr_output_hidden, figure_xr_target_hidden) \
-                      + F.mse_loss(figure_ct_output_random, figure_ct_target_random) \
-                      + F.mse_loss(figure_ct_output_second, figure_ct_target_second) 
+        im2d_loss_dif = F.l1_loss(figure_xr_output_hidden, figure_xr_target_hidden) \
+                      + F.l1_loss(figure_ct_output_random, figure_ct_target_random) \
+                      + F.l1_loss(figure_ct_output_second, figure_ct_target_second) 
         
         # For 3D
         volume_dx_output_concat = self.forward_volume(
@@ -444,8 +444,8 @@ class NVLightningModule(LightningModule):
             volume_ct_target_random = self.ddpmsch.get_velocity(image3d, volume_ct_latent, timesteps)
             volume_ct_target_second = self.ddpmsch.get_velocity(image3d, volume_ct_latent, timesteps)
         
-        im3d_loss_dif = F.mse_loss(volume_ct_output_random, volume_ct_target_random) \
-                      + F.mse_loss(volume_ct_output_second, volume_ct_target_second) 
+        im3d_loss_dif = F.l1_loss(volume_ct_output_random, volume_ct_target_random) \
+                      + F.l1_loss(volume_ct_output_second, volume_ct_target_second) 
         
         if self.train_cfg.perceptual:
             figure_xr_output_hidden_hidden = self.forward_screen(image3d=volume_xr_output_hidden, cameras=view_hidden)
@@ -455,10 +455,10 @@ class NVLightningModule(LightningModule):
         figure_ct_output_random_second = self.forward_screen(image3d=volume_ct_output_random, cameras=view_second)
         figure_ct_output_second_random = self.forward_screen(image3d=volume_ct_output_second, cameras=view_random)
 
-        im2d_loss_cyc = F.mse_loss(figure_ct_output_random_random, figure_ct_target_random) \
-                      + F.mse_loss(figure_ct_output_second_second, figure_ct_target_second) \
-                      + F.mse_loss(figure_ct_output_random_second, figure_ct_target_second) \
-                      + F.mse_loss(figure_ct_output_second_random, figure_ct_target_random) \
+        im2d_loss_cyc = F.l1_loss(figure_ct_output_random_random, figure_ct_target_random) \
+                      + F.l1_loss(figure_ct_output_second_second, figure_ct_target_second) \
+                      + F.l1_loss(figure_ct_output_random_second, figure_ct_target_second) \
+                      + F.l1_loss(figure_ct_output_second_random, figure_ct_target_random) \
         
         im2d_loss = im2d_loss_dif + im2d_loss_cyc
         im3d_loss = im3d_loss_dif
