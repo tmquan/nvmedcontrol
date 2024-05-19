@@ -478,8 +478,7 @@ class NVLightningModule(LightningModule):
             # Sampling step for X-ray
             with torch.no_grad():
                 ###
-                figure_dx_sample_concat = torch.empty_like(figure_dx_latent_concat)
-                nn.init.trunc_normal_(figure_dx_sample_concat, mean=0.50, std=0.25, a=0, b=1)
+                figure_dx_sample_concat = figure_dx_latent_concat
                 mat = self.flatten_cameras(camera_dx_render_concat, zero_translation=False)
                 self.ddimsch.set_timesteps(num_inference_steps=self.model_cfg.timesteps//10)
                 figure_dx_sample_concat = self.inferer.sample(
