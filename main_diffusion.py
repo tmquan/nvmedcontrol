@@ -312,10 +312,10 @@ class NVLightningModule(LightningModule):
 
         timesteps = torch.randint(0, self.ddimsch.num_train_timesteps, (B,), device=_device).long()  
             
-        # figure_xr_latent_hidden = torch.randn_like(figure_xr_source_hidden)
-        # figure_ct_latent_hidden = torch.randn_like(figure_ct_source_hidden)
-        # figure_ct_latent_random = torch.randn_like(figure_ct_source_random)
-        # figure_ct_latent_second = torch.randn_like(figure_ct_source_second)
+        figure_xr_latent_hidden = torch.randn_like(figure_xr_source_hidden)
+        figure_ct_latent_hidden = torch.randn_like(figure_ct_source_hidden)
+        figure_ct_latent_random = torch.randn_like(figure_ct_source_random)
+        figure_ct_latent_second = torch.randn_like(figure_ct_source_second)
 
         # figure_xr_latent_hidden = torch.empty_like(figure_xr_source_hidden)
         # figure_ct_latent_hidden = torch.empty_like(figure_ct_source_hidden)
@@ -326,14 +326,14 @@ class NVLightningModule(LightningModule):
         # nn.init.trunc_normal_(figure_ct_latent_random, mean=0.50, std=0.25, a=0, b=1)
         # nn.init.trunc_normal_(figure_ct_latent_second, mean=0.50, std=0.25, a=0, b=1)
 
-        volume_xr_latent = torch.empty_like(image3d)
-        volume_ct_latent = torch.empty_like(image3d)
-        nn.init.trunc_normal_(volume_xr_latent, mean=0.50, std=0.25, a=0, b=1)
-        nn.init.trunc_normal_(volume_ct_latent, mean=0.50, std=0.25, a=0, b=1)
-        figure_xr_latent_hidden = self.forward_screen(image3d=volume_xr_latent, cameras=view_hidden)
-        figure_ct_latent_hidden = self.forward_screen(image3d=volume_ct_latent, cameras=view_hidden)
-        figure_ct_latent_random = self.forward_screen(image3d=volume_ct_latent, cameras=view_random)
-        figure_ct_latent_second = self.forward_screen(image3d=volume_ct_latent, cameras=view_second)
+        # volume_xr_latent = torch.empty_like(image3d)
+        # volume_ct_latent = torch.empty_like(image3d)
+        # nn.init.trunc_normal_(volume_xr_latent, mean=0.50, std=0.25, a=0, b=1)
+        # nn.init.trunc_normal_(volume_ct_latent, mean=0.50, std=0.25, a=0, b=1)
+        # figure_xr_latent_hidden = self.forward_screen(image3d=volume_xr_latent, cameras=view_hidden)
+        # figure_ct_latent_hidden = self.forward_screen(image3d=volume_ct_latent, cameras=view_hidden)
+        # figure_ct_latent_random = self.forward_screen(image3d=volume_ct_latent, cameras=view_random)
+        # figure_ct_latent_second = self.forward_screen(image3d=volume_ct_latent, cameras=view_second)
 
         # Run the forward pass
         figure_dx_source_concat = torch.cat([figure_xr_source_hidden, figure_ct_source_hidden, figure_ct_source_random, figure_ct_source_second])

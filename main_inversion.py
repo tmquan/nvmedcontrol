@@ -373,20 +373,24 @@ class NVLightningModule(LightningModule):
         figure_ct_source_second = self.forward_screen(image3d=image3d, cameras=view_second)
 
         timesteps = torch.randint(0, self.ddimsch.num_train_timesteps, (B,), device=_device).long()  
-            
-        volume_xr_latent = torch.empty_like(image3d)
-        volume_ct_latent = torch.empty_like(image3d)
-        nn.init.trunc_normal_(volume_xr_latent, mean=0.50, std=0.25, a=0, b=1)
-        nn.init.trunc_normal_(volume_ct_latent, mean=0.50, std=0.25, a=0, b=1)
+
+        figure_xr_latent_hidden = torch.randn_like(figure_xr_source_hidden)
+        figure_ct_latent_random = torch.randn_like(figure_ct_source_random)
+        figure_ct_latent_second = torch.randn_like(figure_ct_source_second)
+
+        # volume_xr_latent = torch.empty_like(image3d)
+        # volume_ct_latent = torch.empty_like(image3d)
+        # nn.init.trunc_normal_(volume_xr_latent, mean=0.50, std=0.25, a=0, b=1)
+        # nn.init.trunc_normal_(volume_ct_latent, mean=0.50, std=0.25, a=0, b=1)
         
-        figure_xr_latent_hidden = self.forward_screen(image3d=volume_xr_latent, cameras=view_hidden)
-        figure_ct_latent_random = self.forward_screen(image3d=volume_ct_latent, cameras=view_random)
-        figure_ct_latent_second = self.forward_screen(image3d=volume_ct_latent, cameras=view_second)
+        # figure_xr_latent_hidden = self.forward_screen(image3d=volume_xr_latent, cameras=view_hidden)
+        # figure_ct_latent_random = self.forward_screen(image3d=volume_ct_latent, cameras=view_random)
+        # figure_ct_latent_second = self.forward_screen(image3d=volume_ct_latent, cameras=view_second)
 
         # Run the forward pass
         figure_dx_source_concat = torch.cat([figure_xr_source_hidden, figure_ct_source_random, figure_ct_source_second])
         figure_dx_latent_concat = torch.cat([figure_xr_latent_hidden, figure_ct_latent_random, figure_ct_latent_second])
-        volume_dx_latent_concat = torch.cat([volume_xr_latent, volume_ct_latent, volume_ct_latent])
+        # volume_dx_latent_concat = torch.cat([volume_xr_latent, volume_ct_latent, volume_ct_latent])
         camera_dx_render_concat = join_cameras_as_batch([view_hidden, view_random, view_second])
 
         # For 2D
