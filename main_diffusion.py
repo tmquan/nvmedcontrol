@@ -478,7 +478,7 @@ class NVLightningModule(LightningModule):
             self.parameters(), lr=self.train_cfg.lr, betas=(0.5, 0.999)
         )
         scheduler = torch.optim.lr_scheduler.MultiStepLR(
-            optimizer, milestones=[100, 200, 300], gamma=0.5
+            optimizer, milestones=[100, 200, 300, 400], gamma=0.5
         )
         return [optimizer], [scheduler]
 
