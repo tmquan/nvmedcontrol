@@ -390,7 +390,7 @@ class NVLightningModule(LightningModule):
                 # inv = torch.cat([torch.inverse(R), -T], dim=-1)
                 mat = torch.cat([cam.R.reshape(-1, 1, 9), cam.T.reshape(-1, 1, 3)], dim=-1).contiguous().view(-1, 1, 12)
                 
-                self.ddpmsch.set_timesteps(num_inference_steps=self.model_cfg.timesteps//10)
+                self.ddpmsch.set_timesteps(num_inference_steps=self.model_cfg.timesteps)
                 figure_dx_sample_concat = self.inferer.sample(
                     input_noise=figure_dx_sample_concat, 
                     conditioning=mat.view(-1, 1, 12), 
