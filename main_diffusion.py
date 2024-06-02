@@ -190,21 +190,21 @@ class NVLightningModule(LightningModule):
         self.ddpmsch = DDPMScheduler(
             num_train_timesteps=self.model_cfg.timesteps, 
             prediction_type=self.model_cfg.prediction_type, 
-            # schedule="scaled_linear_beta", 
-            # beta_start=0.0005, 
-            # beta_end=0.0195,
+            schedule="scaled_linear_beta", 
+            beta_start=0.0005, 
+            beta_end=0.0195,
         )
 
         self.ddimsch = DDIMScheduler(
             num_train_timesteps=self.model_cfg.timesteps, 
             prediction_type=self.model_cfg.prediction_type, 
-            # schedule="scaled_linear_beta", 
-            # beta_start=0.0005, 
-            # beta_end=0.0195, 
+            schedule="scaled_linear_beta", 
+            beta_start=0.0005, 
+            beta_end=0.0195, 
         )
 
         self.inferer = DiffusionInferer(
-            scheduler=self.ddpmsch
+            scheduler=self.ddimsch
         )
 
         if self.model_cfg.phase=="finetune":
@@ -369,10 +369,10 @@ class NVLightningModule(LightningModule):
             figure_ct_target_random = self.ddpmsch.get_velocity(figure_ct_source_random, figure_ct_latent_random, timesteps)
             figure_ct_target_second = self.ddpmsch.get_velocity(figure_ct_source_second, figure_ct_latent_second, timesteps)
         
-        im2d_loss_dif = F.mse_loss(figure_xr_output_hidden, figure_xr_target_hidden) \
-                      + F.mse_loss(figure_ct_output_hidden, figure_ct_target_hidden) \
-                      + F.mse_loss(figure_ct_output_random, figure_ct_target_random) \
-                      + F.mse_loss(figure_ct_output_second, figure_ct_target_second) 
+        im2d_loss_dif = F.l1_loss(figure_xr_output_hidden, figure_xr_target_hidden) \
+                      + F.l1_loss(figure_ct_output_hidden, figure_ct_target_hidden) \
+                      + F.l1_loss(figure_ct_output_random, figure_ct_target_random) \
+                      + F.l1_loss(figure_ct_output_second, figure_ct_target_second) 
         
         im2d_loss = im2d_loss_dif
         self.log(f"{stage}_im2d_loss", im2d_loss, on_step=(stage == "train"), prog_bar=True, logger=True, sync_dist=True, batch_size=B)
@@ -390,12 +390,12 @@ class NVLightningModule(LightningModule):
                 # inv = torch.cat([torch.inverse(R), -T], dim=-1)
                 mat = torch.cat([cam.R.reshape(-1, 1, 9), cam.T.reshape(-1, 1, 3)], dim=-1).contiguous().view(-1, 1, 12)
                 
-                self.ddpmsch.set_timesteps(num_inference_steps=self.model_cfg.timesteps)
+                self.ddimsch.set_timesteps(num_inference_steps=self.model_cfg.timesteps)
                 figure_dx_sample_concat = self.inferer.sample(
                     input_noise=figure_dx_sample_concat, 
                     conditioning=mat.view(-1, 1, 12), 
                     diffusion_model=self.unet2d_model, 
-                    scheduler=self.ddpmsch,
+                    scheduler=self.ddimsch,
                     verbose=False,
                 )
 
@@ -474,11 +474,11 @@ class NVLightningModule(LightningModule):
         pass
 
     def configure_optimizers(self):
-        optimizer = torch.optim.Adam(
+        optimizer = torch.optim.AdamW(
             self.parameters(), lr=self.train_cfg.lr, betas=(0.5, 0.999)
         )
         scheduler = torch.optim.lr_scheduler.MultiStepLR(
-            optimizer, milestones=[100, 200, 300, 400], gamma=0.5
+            optimizer, #milestones=[100, 200, 300, 400], gamma=0.5
         )
         return [optimizer], [scheduler]
 
