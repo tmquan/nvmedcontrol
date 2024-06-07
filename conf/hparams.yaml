@@ -88,7 +88,7 @@ resume_from_checkpoint: null
 trainer:
   accelerator: auto
   devices: -1
-  precision: 32
+  precision: "16-mixed"
   strategy: auto
   max_epochs: ${train.epochs}
   enable_model_summary: true
