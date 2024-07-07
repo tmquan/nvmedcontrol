@@ -10,45 +10,45 @@ defaults:
 
 
 data:
-  datadir: "/nfs/nvidialab/quantm/data"
+  datadir: "data"
   train_samples: 2000
   val_samples: 400
   test_samples: 400
   train_image3d_folders:
-    - "/nfs/nvidialab/quantm/data/ChestXRLungSegmentation/NSCLC/processed/train/images"
-    - "/nfs/nvidialab/quantm/data/ChestXRLungSegmentation/MOSMED/processed/train/images/CT-0"
-    - "/nfs/nvidialab/quantm/data/ChestXRLungSegmentation/MOSMED/processed/train/images/CT-1"
-    - "/nfs/nvidialab/quantm/data/ChestXRLungSegmentation/MOSMED/processed/train/images/CT-2"
-    - "/nfs/nvidialab/quantm/data/ChestXRLungSegmentation/MOSMED/processed/train/images/CT-3"
-    - "/nfs/nvidialab/quantm/data/ChestXRLungSegmentation/MOSMED/processed/train/images/CT-4"
-    - "/nfs/nvidialab/quantm/data/ChestXRLungSegmentation/Imagenglab/processed/train/images"
+    - "data/ChestXRLungSegmentation/NSCLC/processed/train/images"
+    - "data/ChestXRLungSegmentation/MOSMED/processed/train/images/CT-0"
+    - "data/ChestXRLungSegmentation/MOSMED/processed/train/images/CT-1"
+    - "data/ChestXRLungSegmentation/MOSMED/processed/train/images/CT-2"
+    - "data/ChestXRLungSegmentation/MOSMED/processed/train/images/CT-3"
+    - "data/ChestXRLungSegmentation/MOSMED/processed/train/images/CT-4"
+    - "data/ChestXRLungSegmentation/Imagenglab/processed/train/images"
   train_label3d_folders: []
   train_image2d_folders:
-    - "/nfs/nvidialab/quantm/data/ChestXRLungSegmentation/VinDr/v1/processed/train/images/"
+    - "data/ChestXRLungSegmentation/VinDr/v1/processed/train/images/"
   train_label2d_folders: []
   val_image3d_folders:
-    - "/nfs/nvidialab/quantm/data/ChestXRLungSegmentation/NSCLC/processed/train/images"
-    - "/nfs/nvidialab/quantm/data/ChestXRLungSegmentation/MOSMED/processed/train/images/CT-0"
-    - "/nfs/nvidialab/quantm/data/ChestXRLungSegmentation/MOSMED/processed/train/images/CT-1"
-    - "/nfs/nvidialab/quantm/data/ChestXRLungSegmentation/MOSMED/processed/train/images/CT-2"
-    - "/nfs/nvidialab/quantm/data/ChestXRLungSegmentation/MOSMED/processed/train/images/CT-3"
-    - "/nfs/nvidialab/quantm/data/ChestXRLungSegmentation/MOSMED/processed/train/images/CT-4"
-    - "/nfs/nvidialab/quantm/data/ChestXRLungSegmentation/Imagenglab/processed/train/images"
+    - "data/ChestXRLungSegmentation/NSCLC/processed/train/images"
+    - "data/ChestXRLungSegmentation/MOSMED/processed/train/images/CT-0"
+    - "data/ChestXRLungSegmentation/MOSMED/processed/train/images/CT-1"
+    - "data/ChestXRLungSegmentation/MOSMED/processed/train/images/CT-2"
+    - "data/ChestXRLungSegmentation/MOSMED/processed/train/images/CT-3"
+    - "data/ChestXRLungSegmentation/MOSMED/processed/train/images/CT-4"
+    - "data/ChestXRLungSegmentation/Imagenglab/processed/train/images"
   val_label3d_folders: []
   val_image2d_folders:
-    - "/nfs/nvidialab/quantm/data/ChestXRLungSegmentation/VinDr/v1/processed/test/images/"
+    - "data/ChestXRLungSegmentation/VinDr/v1/processed/test/images/"
   val_label2d_folders: []
   test_image3d_folders:
-    - "/nfs/nvidialab/quantm/data/ChestXRLungSegmentation/NSCLC/processed/train/images"
-    - "/nfs/nvidialab/quantm/data/ChestXRLungSegmentation/MOSMED/processed/train/images/CT-0"
-    - "/nfs/nvidialab/quantm/data/ChestXRLungSegmentation/MOSMED/processed/train/images/CT-1"
-    - "/nfs/nvidialab/quantm/data/ChestXRLungSegmentation/MOSMED/processed/train/images/CT-2"
-    - "/nfs/nvidialab/quantm/data/ChestXRLungSegmentation/MOSMED/processed/train/images/CT-3"
-    - "/nfs/nvidialab/quantm/data/ChestXRLungSegmentation/MOSMED/processed/train/images/CT-4"
-    - "/nfs/nvidialab/quantm/data/ChestXRLungSegmentation/Imagenglab/processed/train/images"
+    - "data/ChestXRLungSegmentation/NSCLC/processed/train/images"
+    - "data/ChestXRLungSegmentation/MOSMED/processed/train/images/CT-0"
+    - "data/ChestXRLungSegmentation/MOSMED/processed/train/images/CT-1"
+    - "data/ChestXRLungSegmentation/MOSMED/processed/train/images/CT-2"
+    - "data/ChestXRLungSegmentation/MOSMED/processed/train/images/CT-3"
+    - "data/ChestXRLungSegmentation/MOSMED/processed/train/images/CT-4"
+    - "data/ChestXRLungSegmentation/Imagenglab/processed/train/images"
   test_label3d_folders: []
   test_image2d_folders:
-    - "/nfs/nvidialab/quantm/data/ChestXRLungSegmentation/VinDr/v1/processed/test/images/"
+    - "data/ChestXRLungSegmentation/VinDr/v1/processed/test/images/"
   test_label2d_folders: []
   img_shape: 256
   vol_shape: 256
