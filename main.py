@@ -434,7 +434,8 @@ class NVLightningModule(LightningModule):
         figure_dx_latent_concat = torch.cat([figure_xr_latent_hidden, figure_ct_latent_hidden, figure_ct_latent_random, figure_ct_latent_second])
         camera_dx_render_concat = join_cameras_as_batch([view_hidden, view_hidden, view_random, view_second])
 
-        figure_dx_output_concat = self.forward_timing(
+
+        volume_dx_output_concat = self.forward_volume(
             image2d=figure_dx_source_concat, 
             cameras=camera_dx_render_concat, 
             noise=figure_dx_latent_concat, 
@@ -442,6 +443,17 @@ class NVLightningModule(LightningModule):
         )
 
         # Split the tensor
+        volume_xr_output_hidden, \
+        volume_ct_output_hidden, \
+        volume_ct_output_random, \
+        volume_ct_output_second = torch.split(volume_dx_output_concat, B, dim=0)
+
+        figure_dx_output_concat = self.forward_timing(
+            image2d=figure_dx_source_concat, 
+            cameras=camera_dx_render_concat, 
+            noise=figure_dx_latent_concat, 
+            timesteps=timesteps.repeat(4),
+        )
         figure_xr_output_hidden, \
         figure_ct_output_hidden, \
         figure_ct_output_random, \
@@ -449,20 +461,28 @@ class NVLightningModule(LightningModule):
 
         # Set the target
         if self.ddpmsch.prediction_type == "sample":
+            volume_ct_target_hidden = image3d
+            volume_ct_target_random = image3d
+            volume_ct_target_second = image3d
             figure_xr_target_hidden = figure_xr_source_hidden
             figure_ct_target_hidden = figure_ct_source_hidden
             figure_ct_target_random = figure_ct_source_random
             figure_ct_target_second = figure_ct_source_second
-        elif self.ddpmsch.prediction_type == "epsilon":
-            figure_xr_target_hidden = figure_xr_latent_hidden
-            figure_ct_target_hidden = figure_ct_latent_hidden
-            figure_ct_target_random = figure_ct_latent_random
-            figure_ct_target_second = figure_ct_latent_second
-        elif self.ddpmsch.prediction_type == "v_prediction":
-            figure_xr_target_hidden = self.ddpmsch.get_velocity(figure_xr_source_hidden, figure_xr_latent_hidden, timesteps)
-            figure_ct_target_hidden = self.ddpmsch.get_velocity(figure_ct_source_hidden, figure_ct_latent_hidden, timesteps)
-            figure_ct_target_random = self.ddpmsch.get_velocity(figure_ct_source_random, figure_ct_latent_random, timesteps)
-            figure_ct_target_second = self.ddpmsch.get_velocity(figure_ct_source_second, figure_ct_latent_second, timesteps)
+            
+        # elif self.ddpmsch.prediction_type == "epsilon":
+        #     figure_xr_target_hidden = figure_xr_latent_hidden
+        #     figure_ct_target_hidden = figure_ct_latent_hidden
+        #     figure_ct_target_random = figure_ct_latent_random
+        #     figure_ct_target_second = figure_ct_latent_second
+        # elif self.ddpmsch.prediction_type == "v_prediction":
+        #     figure_xr_target_hidden = self.ddpmsch.get_velocity(figure_xr_source_hidden, figure_xr_latent_hidden, timesteps)
+        #     figure_ct_target_hidden = self.ddpmsch.get_velocity(figure_ct_source_hidden, figure_ct_latent_hidden, timesteps)
+        #     figure_ct_target_random = self.ddpmsch.get_velocity(figure_ct_source_random, figure_ct_latent_random, timesteps)
+        #     figure_ct_target_second = self.ddpmsch.get_velocity(figure_ct_source_second, figure_ct_latent_second, timesteps)
+        
+        im3d_loss_dif = F.l1_loss(volume_ct_output_hidden, volume_ct_target_hidden) \
+                      + F.l1_loss(volume_ct_output_random, volume_ct_target_random) \
+                      + F.l1_loss(volume_ct_output_second, volume_ct_target_second) 
         
         im2d_loss_dif = F.l1_loss(figure_xr_output_hidden, figure_xr_target_hidden) \
                       + F.l1_loss(figure_ct_output_hidden, figure_ct_target_hidden) \
@@ -475,8 +495,6 @@ class NVLightningModule(LightningModule):
             noise=torch.zeros_like(figure_dx_latent_concat), 
             timesteps=None,
         )
-
-        # Split the tensor
         volume_xr_reproj_hidden, \
         volume_ct_reproj_hidden, \
         volume_ct_reproj_random, \
@@ -497,10 +515,10 @@ class NVLightningModule(LightningModule):
                       + F.l1_loss(figure_ct_reproj_second, figure_ct_source_second) 
         
         loss = self.train_cfg.alpha * im2d_loss_inv + self.train_cfg.gamma * im3d_loss_inv \
-             + self.train_cfg.alpha * im2d_loss_dif
+             + self.train_cfg.alpha * im2d_loss_dif + self.train_cfg.gamma * im3d_loss_dif 
+        
         self.log(f"{stage}_loss", loss, on_step=(stage == "train"), prog_bar=True, logger=True, sync_dist=True, batch_size=B)
         
-
         # Visualization step
         if batch_idx == 0:
             # Sampling step for X-ray
@@ -534,7 +552,7 @@ class NVLightningModule(LightningModule):
                         # figure_ct_latent_hidden, 
                         # figure_ct_latent_random, 
                         # figure_ct_latent_second,
-                        zeros, 
+                        volume_xr_output_hidden[..., self.model_cfg.vol_shape // 2, :],  
                         image3d[..., self.model_cfg.vol_shape // 2, :], 
                         image3d[..., self.model_cfg.vol_shape // 2, :], 
                         image3d[..., self.model_cfg.vol_shape // 2, :], 

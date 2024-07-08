@@ -52,7 +52,7 @@ data:
   test_label2d_folders: []
   img_shape: 256
   vol_shape: 256
-  batch_size: 2
+  batch_size: 1
 
 model:  
   phase: "diffusion"
