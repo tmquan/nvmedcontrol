@@ -159,13 +159,13 @@ class ReverseXRayVolumeRenderer(ForwardXRayVolumeRenderer):
         
         raymarcher = AbsorptionEmissionRaymarcher()  # BackToFront Raymarcher
         raysampler = NDCMultinomialRaysampler(
-                image_width=self.image_width, 
-                image_height=self.image_height, 
-                n_pts_per_ray=self.n_pts_per_ray, 
-                min_depth=self.min_depth, 
-                max_depth=self.max_depth, 
-                stratified_sampling=stratified_sampling
-            )
+            image_width=self.image_width, 
+            image_height=self.image_height, 
+            n_pts_per_ray=self.n_pts_per_ray, 
+            min_depth=self.min_depth, 
+            max_depth=self.max_depth, 
+            stratified_sampling=stratified_sampling
+        )
         renderer = VolumeRenderer(raysampler=raysampler, raymarcher=raymarcher)  
         screen_RGBA, bundle = renderer(cameras=cameras, volumes=volumes)  # [...,:3]
         

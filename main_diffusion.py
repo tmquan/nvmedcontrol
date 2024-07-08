@@ -164,7 +164,7 @@ class NVLightningModule(LightningModule):
         # self.unet3d_model = DiffusionModelUNet(
         #     spatial_dims=2,
         #     in_channels=1,
-        #     out_channels=self.model_cfg.fov_depth*2,
+        #     out_channels=self.model_cfg.fov_depth,
         #     num_channels=[256, 256, 512],
         #     attention_levels=[False, False, True],
         #     num_head_channels=[0, 0, 512],

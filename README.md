@@ -5,19 +5,20 @@ Environment setup
 conda create --name=py310  python=3.10
 conda activate py310
 
-conda install pytorch torchvision torchaudio pytorch-cuda=12.1 -c pytorch -c nvidia
-conda install xformers -c xformers
+conda install pytorch=2.3.0 torchvision torchaudio pytorch-cuda=12.1 -c pytorch -c nvidia
+
 
 pip install -U pip 
-pip install -U pip  lightning rich torch_fidelity torch_ema datasets diffusers hydra-core tensorboard
-pip install -U pip 
+pip install -U lightning rich torch_fidelity torch_ema datasets diffusers hydra-core tensorboard
+pip install -U numpy==1.26.4
 pip install -U transformers
+pip install -U xformers --index-url https://download.pytorch.org/whl/cu121
 pip install -U plotly
 pip install -U diffusers
 pip install -U lightning
 pip install -U tensorboard
 
-pip install -U monai[all]
+pip install -U monai[nibabel]
 pip install -U einops
 pip install -U lmdb
 pip install -U mlflow
