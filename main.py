@@ -290,7 +290,8 @@ class NVLightningModule(LightningModule):
             with_conditioning=True, 
             cross_attention_dim=12, # Condition with straight/hidden view  # flatR | flatT
         )
-
+        init_weights(self.unet3d_model, init_type="normal")
+        
         self.ddpmsch = DDPMScheduler(
             num_train_timesteps=self.model_cfg.timesteps, 
             prediction_type=self.model_cfg.prediction_type, 
@@ -321,14 +322,14 @@ class NVLightningModule(LightningModule):
             network_type="radimagenet_resnet50", 
             is_fake_3d=False, 
             pretrained=True,
-        )
+        ).float()
         
         self.p3dloss = PerceptualLoss(
             spatial_dims=3, 
             network_type="medicalnet_resnet50_23datasets", 
             is_fake_3d=False, 
             pretrained=True,
-        )
+        ).float()
 
         if self.model_cfg.phase=="finetune":
             pass
@@ -527,21 +528,16 @@ class NVLightningModule(LightningModule):
                       + F.l1_loss(figure_ct_reproj_random, figure_ct_source_random) \
                       + F.l1_loss(figure_ct_reproj_second, figure_ct_source_second) 
         
-        
-    
-        if stage=="train":
-            pc3d_loss_all = self.p3dloss(volume_xr_output_hidden, image3d) \
-                          + self.p3dloss(volume_xr_reproj_hidden, image3d) 
+        pc3d_loss_all = self.p3dloss(volume_xr_output_hidden.float(), image3d.float()) \
+                      + self.p3dloss(volume_xr_reproj_hidden.float(), image3d.float()) 
 
-            pc2d_loss_all = self.p2dloss(figure_xr_output_hidden, image2d) \
-                          + self.p2dloss(figure_xr_reproj_hidden, image2d) 
-            
-            loss = self.train_cfg.alpha * im2d_loss_inv + self.train_cfg.gamma * im3d_loss_inv \
-                 + self.train_cfg.alpha * im2d_loss_dif + self.train_cfg.gamma * im3d_loss_dif \
-                 + self.train_cfg.lamda * pc2d_loss_all + self.train_cfg.lamda * pc3d_loss_all  
-        else:
-            loss = self.train_cfg.alpha * im2d_loss_inv + self.train_cfg.gamma * im3d_loss_inv \
-                 + self.train_cfg.alpha * im2d_loss_dif + self.train_cfg.gamma * im3d_loss_dif 
+        pc2d_loss_all = self.p2dloss(figure_xr_output_hidden.float(), image2d.float()) \
+                      + self.p2dloss(figure_xr_reproj_hidden.float(), image2d.float()) 
+        
+        loss = self.train_cfg.alpha * im2d_loss_inv + self.train_cfg.gamma * im3d_loss_inv \
+             + self.train_cfg.alpha * im2d_loss_dif + self.train_cfg.gamma * im3d_loss_dif \
+             + self.train_cfg.lamda * pc2d_loss_all + self.train_cfg.lamda * pc3d_loss_all  
+    
         self.log(f"{stage}_loss", loss, on_step=(stage == "train"), prog_bar=True, logger=True, sync_dist=True, batch_size=B)
         
         # Visualization step
@@ -551,7 +547,7 @@ class NVLightningModule(LightningModule):
                 figure_dx_sample_concat = figure_dx_latent_concat
                 cam = camera_dx_render_concat.clone()
                 mat = self.flatten_cameras(cam, zero_translation=False)
-                self.ddimsch.set_timesteps(num_inference_steps=self.model_cfg.timesteps)
+                self.ddimsch.set_timesteps(num_inference_steps=self.model_cfg.timesteps//20)
                 figure_dx_sample_concat = self.inferer.sample(
                     input_noise=figure_dx_sample_concat, 
                     conditioning=mat.view(-1, 1, 12), 
