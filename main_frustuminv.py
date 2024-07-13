@@ -484,11 +484,24 @@ class NVLightningModule(LightningModule):
                       + F.l1_loss(figure_ct_reproj_second_random, figure_ct_source_random) \
                       + F.l1_loss(figure_ct_reproj_second_second, figure_ct_source_second) 
         
-        pc3d_loss_all = self.p3dloss(volume_xr_reproj_hidden.float(), image3d.float()) 
-        pc2d_loss_all = self.p2dloss(figure_xr_reproj_hidden_hidden.float(), image2d.float()) \
-                      + self.p2dloss(figure_xr_reproj_hidden_random.float(), figure_ct_source_random.float()) \
-                      + self.p2dloss(figure_xr_reproj_hidden_second.float(), figure_ct_source_second.float()) \
-                      + self.p2dloss(figure_xr_reproj_hidden_hidden.float(), figure_ct_source_hidden.float()) \
+        pc3d_loss_all = self.p3dloss(volume_xr_reproj_hidden, image3d) \
+                      + self.p3dloss(volume_ct_reproj_hidden, image3d) \
+                      + self.p3dloss(volume_ct_reproj_random, image3d) \
+                      + self.p3dloss(volume_ct_reproj_second, image3d) 
+        
+        pc2d_loss_all = self.p2dloss(figure_xr_reproj_hidden_hidden, image2d) \
+                      + self.p2dloss(figure_xr_reproj_hidden_random, figure_ct_source_random) \
+                      + self.p2dloss(figure_xr_reproj_hidden_second, figure_ct_source_second) \
+                      + self.p2dloss(figure_xr_reproj_hidden_hidden, figure_ct_source_hidden) \
+                    #   + self.p2dloss(figure_ct_reproj_hidden_hidden, figure_ct_source_hidden) \
+                    #   + self.p2dloss(figure_ct_reproj_hidden_random, figure_ct_source_random) \
+                    #   + self.p2dloss(figure_ct_reproj_hidden_second, figure_ct_source_second) \
+                    #   + self.p2dloss(figure_ct_reproj_random_hidden, figure_ct_source_hidden) \
+                    #   + self.p2dloss(figure_ct_reproj_random_random, figure_ct_source_random) \
+                    #   + self.p2dloss(figure_ct_reproj_random_second, figure_ct_source_second) \
+                    #   + self.p2dloss(figure_ct_reproj_second_hidden, figure_ct_source_hidden) \
+                    #   + self.p2dloss(figure_ct_reproj_second_random, figure_ct_source_random) \
+                    #   + self.p2dloss(figure_ct_reproj_second_second, figure_ct_source_second) 
         
         loss = self.train_cfg.alpha * im2d_loss_inv + self.train_cfg.gamma * im3d_loss_inv \
              + self.train_cfg.lamda * pc2d_loss_all + self.train_cfg.lamda * pc3d_loss_all  
