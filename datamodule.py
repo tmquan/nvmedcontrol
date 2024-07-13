@@ -5,7 +5,7 @@ from typing import Callable, Optional, Sequence
 from argparse import ArgumentParser
 
 # from torch.utils.data import Dataset, DataLoader
-from monai.data import CacheDataset, Dataset, DataLoader
+from monai.data import CacheDataset, ThreadDataLoader
 from monai.data import list_data_collate
 from monai.utils import set_determinism
 from monai.transforms import (
@@ -284,7 +284,7 @@ class UnpairedDataModule(LightningDataModule):
             is_training=True,
         )
 
-        self.train_loader = DataLoader(
+        self.train_loader = ThreadDataLoader(
             self.train_datasets,
             batch_size=self.batch_size,
             num_workers=16,
@@ -390,7 +390,7 @@ class UnpairedDataModule(LightningDataModule):
             is_training=True,
         )
 
-        self.val_loader = DataLoader(
+        self.val_loader = ThreadDataLoader(
             self.val_datasets,
             batch_size=self.batch_size,
             num_workers=8,
@@ -496,7 +496,7 @@ class UnpairedDataModule(LightningDataModule):
             is_training=False,
         )
 
-        self.test_loader = DataLoader(
+        self.test_loader = ThreadDataLoader(
             self.test_datasets,
             batch_size=self.batch_size,
             num_workers=8,
@@ -621,7 +621,7 @@ class ExampleDataModule(LightningDataModule):
             is_training=True,
         )
 
-        self.train_loader = DataLoader(
+        self.train_loader = ThreadDataLoader(
             self.train_datasets,
             batch_size=self.batch_size,
             num_workers=32,
@@ -675,7 +675,7 @@ class ExampleDataModule(LightningDataModule):
             is_training=True,
         )
 
-        self.val_loader = DataLoader(
+        self.val_loader = ThreadDataLoader(
             self.val_datasets,
             batch_size=self.batch_size,
             num_workers=16,
@@ -729,7 +729,7 @@ class ExampleDataModule(LightningDataModule):
             is_training=False,
         )
 
-        self.test_loader = DataLoader(
+        self.test_loader = ThreadDataLoader(
             self.test_datasets,
             batch_size=self.batch_size,
             num_workers=16,
