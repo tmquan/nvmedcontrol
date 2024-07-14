@@ -23,12 +23,7 @@ import torch.nn.functional as F
 
 import torchvision
 
-from torchmetrics.functional.image import image_gradients
 from typing import Any, Callable, Dict, Optional, Tuple, List
-from lightning.pytorch.callbacks import ModelCheckpoint
-from lightning.pytorch.callbacks import LearningRateMonitor, EarlyStopping
-from lightning.pytorch.callbacks import StochasticWeightAveraging
-from lightning.pytorch.loggers import TensorBoardLogger
 from lightning.pytorch import seed_everything, Trainer, LightningModule
 
 from pytorch3d.renderer.cameras import (
@@ -38,49 +33,7 @@ from pytorch3d.renderer.cameras import (
 )
 from pytorch3d.renderer.camera_utils import join_cameras_as_batch
 
-# from monai.networks.nets import Unet
-# from monai.networks.layers.factories import Norm
-# from generative.networks.nets import DiffusionModelUNet
 from omegaconf import OmegaConf
-from PIL import Image
-from pytorch3d.implicitron.dataset.dataset_base import FrameData
-from pytorch3d.implicitron.dataset.utils import DATASET_TYPE_KNOWN, DATASET_TYPE_UNKNOWN
-from pytorch3d.implicitron.dataset.rendered_mesh_dataset_map_provider import (
-    RenderedMeshDatasetMapProvider,
-)
-
-from pytorch3d.implicitron.models.generic_model import GenericModel
-from pytorch3d.implicitron.models.implicit_function.base import (
-    ImplicitFunctionBase,
-    ImplicitronRayBundle,
-)
-from pytorch3d.implicitron.models.renderer.raymarcher import (
-    AccumulativeRaymarcherBase,
-    RaymarcherBase,
-)
-from pytorch3d.implicitron.models.renderer.base import (
-    BaseRenderer,
-    RendererOutput,
-    EvaluationMode,
-    ImplicitFunctionWrapper,
-)
-from pytorch3d.implicitron.models.renderer.multipass_ea import (
-    MultiPassEmissionAbsorptionRenderer,
-)
-from pytorch3d.implicitron.models.renderer.ray_point_refiner import RayPointRefiner
-from pytorch3d.implicitron.tools.config import (
-    get_default_args,
-    registry,
-    remove_unused_components,
-    run_auto_creation,
-)
-from pytorch3d.renderer.implicit.renderer import VolumeSampler
-from pytorch3d.vis.plotly_vis import plot_batch_individually, plot_scene
-from pytorch3d.renderer.implicit.raymarching import (
-    _check_density_bounds,
-    _check_raymarcher_inputs,
-    _shifted_cumprod,
-)
 
 from monai.losses import PerceptualLoss
 from monai.networks.nets import UNet

@@ -23,12 +23,8 @@ import torch.nn.functional as F
 
 import torchvision
 
-from torchmetrics.functional.image import image_gradients
 from typing import Any, Callable, Dict, Optional, Tuple, List
-from lightning.pytorch.callbacks import ModelCheckpoint
-from lightning.pytorch.callbacks import LearningRateMonitor, EarlyStopping
-from lightning.pytorch.callbacks import StochasticWeightAveraging
-from lightning.pytorch.loggers import TensorBoardLogger
+
 from lightning.pytorch import seed_everything, Trainer, LightningModule
 
 from pytorch3d.renderer.cameras import (
@@ -37,54 +33,11 @@ from pytorch3d.renderer.cameras import (
     look_at_view_transform,
 )
 from pytorch3d.renderer.camera_utils import join_cameras_as_batch
-
-# from monai.networks.nets import Unet
-# from monai.networks.layers.factories import Norm
-# from generative.networks.nets import DiffusionModelUNet
+ 
+import torchvision
 from omegaconf import OmegaConf
-from PIL import Image
-from pytorch3d.implicitron.dataset.dataset_base import FrameData
-from pytorch3d.implicitron.dataset.utils import DATASET_TYPE_KNOWN, DATASET_TYPE_UNKNOWN
-from pytorch3d.implicitron.dataset.rendered_mesh_dataset_map_provider import (
-    RenderedMeshDatasetMapProvider,
-)
-
-from pytorch3d.implicitron.models.generic_model import GenericModel
-from pytorch3d.implicitron.models.implicit_function.base import (
-    ImplicitFunctionBase,
-    ImplicitronRayBundle,
-)
-from pytorch3d.implicitron.models.renderer.raymarcher import (
-    AccumulativeRaymarcherBase,
-    RaymarcherBase,
-)
-from pytorch3d.implicitron.models.renderer.base import (
-    BaseRenderer,
-    RendererOutput,
-    EvaluationMode,
-    ImplicitFunctionWrapper,
-)
-from pytorch3d.implicitron.models.renderer.multipass_ea import (
-    MultiPassEmissionAbsorptionRenderer,
-)
-from pytorch3d.implicitron.models.renderer.ray_point_refiner import RayPointRefiner
-from pytorch3d.implicitron.tools.config import (
-    get_default_args,
-    registry,
-    remove_unused_components,
-    run_auto_creation,
-)
-from pytorch3d.renderer.implicit.renderer import VolumeSampler
-from pytorch3d.vis.plotly_vis import plot_batch_individually, plot_scene
-from pytorch3d.renderer.implicit.raymarching import (
-    _check_density_bounds,
-    _check_raymarcher_inputs,
-    _shifted_cumprod,
-)
 
 from monai.losses import PerceptualLoss
-from monai.networks.nets import UNet
-from monai.networks.layers.factories import Norm
 
 from generative.inferers import DiffusionInferer
 from generative.networks.nets import DiffusionModelUNet
@@ -237,9 +190,6 @@ class NVLightningModule(LightningModule):
         image2d = self.fwd_renderer(image3d, cameras, norm_type="standardized", stratified_sampling=is_training)
         return image2d
     
-    def forward_volume(self, image2d, cameras, is_training=False):
-        pass
-    
     def flatten_cameras(self, cameras, zero_translation=False):
         camera_ = cameras.clone()
         R = camera_.R
@@ -249,22 +199,6 @@ class NVLightningModule(LightningModule):
             T = camera_.T.unsqueeze_(-1)
         return torch.cat([R.reshape(-1, 1, 9), T.reshape(-1, 1, 3)], dim=-1).contiguous().view(-1, 1, 12)
 
-    def forward_volume(self, image2d, cameras, noise=None, timesteps=None):
-        _device = image2d.device
-        B = image2d.shape[0]
-        timesteps = torch.zeros((B,), device=_device).long()if timesteps is None else timesteps
-
-        mat = self.flatten_cameras(cameras, zero_translation=False)
-
-        results = self.inferer(
-            inputs=image2d, 
-            noise=noise, 
-            diffusion_model=self.unet3d_model, 
-            condition=mat.view(-1, 1, 12), 
-            timesteps=timesteps
-        ) 
-        return results
-    
     def forward_timing(self, image2d, cameras, noise=None, timesteps=None):
         _device = image2d.device
         B = image2d.shape[0]
@@ -316,24 +250,6 @@ class NVLightningModule(LightningModule):
         figure_ct_latent_random = torch.randn_like(figure_ct_source_random)
         figure_ct_latent_second = torch.randn_like(figure_ct_source_second)
 
-        # figure_xr_latent_hidden = torch.empty_like(figure_xr_source_hidden)
-        # figure_ct_latent_hidden = torch.empty_like(figure_ct_source_hidden)
-        # figure_ct_latent_random = torch.empty_like(figure_ct_source_random)
-        # figure_ct_latent_second = torch.empty_like(figure_ct_source_second)
-        # nn.init.trunc_normal_(figure_xr_latent_hidden, mean=0.50, std=0.25, a=0, b=1)
-        # nn.init.trunc_normal_(figure_ct_latent_hidden, mean=0.50, std=0.25, a=0, b=1)
-        # nn.init.trunc_normal_(figure_ct_latent_random, mean=0.50, std=0.25, a=0, b=1)
-        # nn.init.trunc_normal_(figure_ct_latent_second, mean=0.50, std=0.25, a=0, b=1)
-
-        # volume_xr_latent = torch.empty_like(image3d)
-        # volume_ct_latent = torch.empty_like(image3d)
-        # nn.init.trunc_normal_(volume_xr_latent, mean=0.50, std=0.25, a=0, b=1)
-        # nn.init.trunc_normal_(volume_ct_latent, mean=0.50, std=0.25, a=0, b=1)
-        # figure_xr_latent_hidden = self.forward_screen(image3d=volume_xr_latent, cameras=view_hidden)
-        # figure_ct_latent_hidden = self.forward_screen(image3d=volume_ct_latent, cameras=view_hidden)
-        # figure_ct_latent_random = self.forward_screen(image3d=volume_ct_latent, cameras=view_random)
-        # figure_ct_latent_second = self.forward_screen(image3d=volume_ct_latent, cameras=view_second)
-
         # Run the forward pass
         figure_dx_source_concat = torch.cat([figure_xr_source_hidden, figure_ct_source_hidden, figure_ct_source_random, figure_ct_source_second])
         figure_dx_latent_concat = torch.cat([figure_xr_latent_hidden, figure_ct_latent_hidden, figure_ct_latent_random, figure_ct_latent_second])
@@ -375,22 +291,18 @@ class NVLightningModule(LightningModule):
                       + F.l1_loss(figure_ct_output_second, figure_ct_target_second) 
         
         im2d_loss = im2d_loss_dif
-        self.log(f"{stage}_im2d_loss", im2d_loss, on_step=(stage == "train"), prog_bar=True, logger=True, sync_dist=True, batch_size=B)
         loss = self.train_cfg.alpha * im2d_loss 
-
+        self.log(f"{stage}_loss", loss, on_step=(stage == "train"), prog_bar=True, logger=True, sync_dist=True, batch_size=B)
+        
         # Visualization step
         if batch_idx == 0:
             # Sampling step for X-ray
             with torch.no_grad():
                 figure_dx_sample_concat = figure_dx_latent_concat
                 cam = camera_dx_render_concat.clone()
-                R = cam.R
-                T = cam.T.unsqueeze_(-1)
-                # T = torch.zeros_like(cam.T.unsqueeze_(-1))
-                # inv = torch.cat([torch.inverse(R), -T], dim=-1)
-                mat = torch.cat([cam.R.reshape(-1, 1, 9), cam.T.reshape(-1, 1, 3)], dim=-1).contiguous().view(-1, 1, 12)
+                mat = self.flatten_cameras(cam, zero_translation=False)
+                self.ddimsch.set_timesteps(num_inference_steps=self.model_cfg.timesteps//20)
                 
-                self.ddimsch.set_timesteps(num_inference_steps=self.model_cfg.timesteps)
                 figure_dx_sample_concat = self.inferer.sample(
                     input_noise=figure_dx_sample_concat, 
                     conditioning=mat.view(-1, 1, 12), 
