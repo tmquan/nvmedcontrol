@@ -528,6 +528,7 @@ class NVLightningModule(LightningModule):
                       + F.l1_loss(figure_ct_reproj_random, figure_ct_source_random) \
                       + F.l1_loss(figure_ct_reproj_second, figure_ct_source_second) 
         
+        
         pc3d_loss_all = self.p3dloss(volume_xr_output_hidden.float(), image3d.float()) \
                       + self.p3dloss(volume_xr_reproj_hidden.float(), image3d.float()) 
 

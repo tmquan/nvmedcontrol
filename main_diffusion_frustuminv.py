@@ -330,6 +330,12 @@ class NVLightningModule(LightningModule):
             is_fake_3d=False, 
             pretrained=True,
         ).float()
+        # self.p3dloss = PerceptualLoss(
+        #     spatial_dims=3, 
+        #     network_type="radimagenet_resnet50", 
+        #     is_fake_3d=True, fake_3d_ratio=0.5,
+        #     pretrained=True,
+        # ).float()
 
         if self.model_cfg.phase=="finetune":
             pass
@@ -481,7 +487,7 @@ class NVLightningModule(LightningModule):
             volume_ct_target_hidden = image3d
             volume_ct_target_random = image3d
             volume_ct_target_second = image3d
-            figure_xr_target_hidden = figure_xr_source_hidden
+            # figure_xr_target_hidden = figure_xr_source_hidden
             figure_ct_target_hidden = figure_ct_source_hidden
             figure_ct_target_random = figure_ct_source_random
             figure_ct_target_second = figure_ct_source_second      
@@ -503,11 +509,12 @@ class NVLightningModule(LightningModule):
         im2d_loss_dif = F.l1_loss(figure_ct_output_hidden, figure_ct_target_hidden) \
                       + F.l1_loss(figure_ct_output_random, figure_ct_target_random) \
                       + F.l1_loss(figure_ct_output_second, figure_ct_target_second) 
-        # For 3D
+        
+         # For 3D
         volume_dx_reproj_concat = self.forward_volume(
             image2d=figure_dx_source_concat, 
             cameras=camera_dx_render_concat, 
-            noise=torch.zeros_like(figure_dx_latent_concat), 
+            noise=torch.zeros_like(figure_dx_source_concat), 
             timesteps=None,
         )
         volume_xr_reproj_hidden, \
@@ -515,24 +522,56 @@ class NVLightningModule(LightningModule):
         volume_ct_reproj_random, \
         volume_ct_reproj_second = torch.split(volume_dx_reproj_concat, B, dim=0)
         
-        figure_xr_reproj_hidden = self.forward_screen(image3d=volume_xr_reproj_hidden, cameras=view_hidden)
-        figure_ct_reproj_hidden = self.forward_screen(image3d=volume_ct_reproj_hidden, cameras=view_hidden)
-        figure_ct_reproj_random = self.forward_screen(image3d=volume_ct_reproj_random, cameras=view_random)
-        figure_ct_reproj_second = self.forward_screen(image3d=volume_ct_reproj_second, cameras=view_second)
+        figure_xr_reproj_hidden_hidden = self.forward_screen(image3d=volume_xr_reproj_hidden, cameras=view_hidden)
+        figure_xr_reproj_hidden_random = self.forward_screen(image3d=volume_xr_reproj_hidden, cameras=view_random)
+        figure_xr_reproj_hidden_second = self.forward_screen(image3d=volume_xr_reproj_hidden, cameras=view_second)
+        
+        figure_ct_reproj_hidden_hidden = self.forward_screen(image3d=volume_ct_reproj_hidden, cameras=view_hidden)
+        figure_ct_reproj_hidden_random = self.forward_screen(image3d=volume_ct_reproj_hidden, cameras=view_random)
+        figure_ct_reproj_hidden_second = self.forward_screen(image3d=volume_ct_reproj_hidden, cameras=view_second)
+        
+        figure_ct_reproj_random_hidden = self.forward_screen(image3d=volume_ct_reproj_random, cameras=view_hidden)
+        figure_ct_reproj_random_random = self.forward_screen(image3d=volume_ct_reproj_random, cameras=view_random)
+        figure_ct_reproj_random_second = self.forward_screen(image3d=volume_ct_reproj_random, cameras=view_second)
+        
+        figure_ct_reproj_second_hidden = self.forward_screen(image3d=volume_ct_reproj_second, cameras=view_hidden)
+        figure_ct_reproj_second_random = self.forward_screen(image3d=volume_ct_reproj_second, cameras=view_random)
+        figure_ct_reproj_second_second = self.forward_screen(image3d=volume_ct_reproj_second, cameras=view_second)
 
         im3d_loss_inv = F.l1_loss(volume_ct_reproj_hidden, image3d) \
                       + F.l1_loss(volume_ct_reproj_random, image3d) \
                       + F.l1_loss(volume_ct_reproj_second, image3d) 
         
-        im2d_loss_inv = F.l1_loss(figure_ct_reproj_hidden, figure_ct_source_hidden) \
-                      + F.l1_loss(figure_ct_reproj_random, figure_ct_source_random) \
-                      + F.l1_loss(figure_ct_reproj_second, figure_ct_source_second) 
+        im2d_loss_inv = F.l1_loss(figure_ct_reproj_hidden_hidden, figure_ct_source_hidden) \
+                      + F.l1_loss(figure_ct_reproj_hidden_random, figure_ct_source_random) \
+                      + F.l1_loss(figure_ct_reproj_hidden_second, figure_ct_source_second) \
+                      + F.l1_loss(figure_ct_reproj_random_hidden, figure_ct_source_hidden) \
+                      + F.l1_loss(figure_ct_reproj_random_random, figure_ct_source_random) \
+                      + F.l1_loss(figure_ct_reproj_random_second, figure_ct_source_second) \
+                      + F.l1_loss(figure_ct_reproj_second_hidden, figure_ct_source_hidden) \
+                      + F.l1_loss(figure_ct_reproj_second_random, figure_ct_source_random) \
+                      + F.l1_loss(figure_ct_reproj_second_second, figure_ct_source_second) 
         
-        pc3d_loss_all = self.p3dloss(volume_xr_output_hidden.float(), image3d.float()) \
-                      + self.p3dloss(volume_xr_reproj_hidden.float(), image3d.float()) 
-
-        pc2d_loss_all = self.p2dloss(figure_xr_output_hidden.float(), image2d.float()) \
-                      + self.p2dloss(figure_xr_reproj_hidden.float(), image2d.float()) 
+        pc3d_loss_all = self.p3dloss(volume_xr_reproj_hidden, image3d) \
+                      + self.p3dloss(volume_xr_output_hidden, image3d) \
+                    #   + self.p3dloss(volume_ct_reproj_hidden, image3d) \
+                    #   + self.p3dloss(volume_ct_reproj_random, image3d) \
+                    #   + self.p3dloss(volume_ct_reproj_second, image3d) 
+        
+        pc2d_loss_all = self.p2dloss(figure_xr_reproj_hidden_hidden, image2d) \
+                      + self.p2dloss(figure_xr_output_hidden, image2d) \
+                    #   + self.p2dloss(figure_xr_reproj_hidden_random, figure_ct_source_random) \
+                    #   + self.p2dloss(figure_xr_reproj_hidden_second, figure_ct_source_second) \
+                    #   + self.p2dloss(figure_xr_reproj_hidden_hidden, figure_ct_source_hidden) \
+                    #   + self.p2dloss(figure_ct_reproj_hidden_hidden, figure_ct_source_hidden) \
+                    #   + self.p2dloss(figure_ct_reproj_hidden_random, figure_ct_source_random) \
+                    #   + self.p2dloss(figure_ct_reproj_hidden_second, figure_ct_source_second) \
+                    #   + self.p2dloss(figure_ct_reproj_random_hidden, figure_ct_source_hidden) \
+                    #   + self.p2dloss(figure_ct_reproj_random_random, figure_ct_source_random) \
+                    #   + self.p2dloss(figure_ct_reproj_random_second, figure_ct_source_second) \
+                    #   + self.p2dloss(figure_ct_reproj_second_hidden, figure_ct_source_hidden) \
+                    #   + self.p2dloss(figure_ct_reproj_second_random, figure_ct_source_random) \
+                    #   + self.p2dloss(figure_ct_reproj_second_second, figure_ct_source_second) 
         
         loss = self.train_cfg.alpha * im2d_loss_inv + self.train_cfg.gamma * im3d_loss_inv \
              + self.train_cfg.alpha * im2d_loss_dif + self.train_cfg.gamma * im3d_loss_dif \
@@ -579,20 +618,24 @@ class NVLightningModule(LightningModule):
                         image3d[..., self.model_cfg.vol_shape // 2, :], 
                     ], dim=-2).transpose(2, 3),
                     torch.cat([
-                        figure_xr_output_hidden, 
-                        figure_ct_output_hidden, 
-                        figure_ct_output_random, 
-                        figure_ct_output_second,
+                        # figure_xr_output_hidden, 
+                        # figure_ct_output_hidden, 
+                        # figure_ct_output_random, 
+                        # figure_ct_output_second,
+                        zeros,
+                        figure_xr_reproj_hidden_hidden, 
+                        figure_xr_reproj_hidden_random, 
+                        figure_xr_reproj_hidden_second,
                         figure_xr_sample_hidden, 
                         figure_ct_sample_hidden, 
                         figure_ct_sample_random, 
                         figure_ct_sample_second,
                     ], dim=-2).transpose(2, 3),
                     torch.cat([
-                        figure_xr_reproj_hidden, 
-                        figure_ct_reproj_hidden, 
-                        figure_ct_reproj_random, 
-                        figure_ct_reproj_second,
+                        figure_xr_reproj_hidden_hidden, 
+                        figure_ct_reproj_hidden_hidden, 
+                        figure_ct_reproj_hidden_random, 
+                        figure_ct_reproj_hidden_second,
                         volume_xr_reproj_hidden[..., self.model_cfg.vol_shape // 2, :], 
                         volume_ct_reproj_hidden[..., self.model_cfg.vol_shape // 2, :], 
                         volume_ct_reproj_random[..., self.model_cfg.vol_shape // 2, :], 

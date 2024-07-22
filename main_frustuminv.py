@@ -23,7 +23,12 @@ import torch.nn.functional as F
 
 import torchvision
 
+from torchmetrics.functional.image import image_gradients
 from typing import Any, Callable, Dict, Optional, Tuple, List
+from lightning.pytorch.callbacks import ModelCheckpoint
+from lightning.pytorch.callbacks import LearningRateMonitor, EarlyStopping
+from lightning.pytorch.callbacks import StochasticWeightAveraging
+from lightning.pytorch.loggers import TensorBoardLogger
 from lightning.pytorch import seed_everything, Trainer, LightningModule
 
 from pytorch3d.renderer.cameras import (
@@ -33,7 +38,49 @@ from pytorch3d.renderer.cameras import (
 )
 from pytorch3d.renderer.camera_utils import join_cameras_as_batch
 
+# from monai.networks.nets import Unet
+# from monai.networks.layers.factories import Norm
+# from generative.networks.nets import DiffusionModelUNet
 from omegaconf import OmegaConf
+from PIL import Image
+from pytorch3d.implicitron.dataset.dataset_base import FrameData
+from pytorch3d.implicitron.dataset.utils import DATASET_TYPE_KNOWN, DATASET_TYPE_UNKNOWN
+from pytorch3d.implicitron.dataset.rendered_mesh_dataset_map_provider import (
+    RenderedMeshDatasetMapProvider,
+)
+
+from pytorch3d.implicitron.models.generic_model import GenericModel
+from pytorch3d.implicitron.models.implicit_function.base import (
+    ImplicitFunctionBase,
+    ImplicitronRayBundle,
+)
+from pytorch3d.implicitron.models.renderer.raymarcher import (
+    AccumulativeRaymarcherBase,
+    RaymarcherBase,
+)
+from pytorch3d.implicitron.models.renderer.base import (
+    BaseRenderer,
+    RendererOutput,
+    EvaluationMode,
+    ImplicitFunctionWrapper,
+)
+from pytorch3d.implicitron.models.renderer.multipass_ea import (
+    MultiPassEmissionAbsorptionRenderer,
+)
+from pytorch3d.implicitron.models.renderer.ray_point_refiner import RayPointRefiner
+from pytorch3d.implicitron.tools.config import (
+    get_default_args,
+    registry,
+    remove_unused_components,
+    run_auto_creation,
+)
+from pytorch3d.renderer.implicit.renderer import VolumeSampler
+from pytorch3d.vis.plotly_vis import plot_batch_individually, plot_scene
+from pytorch3d.renderer.implicit.raymarching import (
+    _check_density_bounds,
+    _check_raymarcher_inputs,
+    _shifted_cumprod,
+)
 
 from monai.losses import PerceptualLoss
 from monai.networks.nets import UNet
@@ -243,7 +290,7 @@ class NVLightningModule(LightningModule):
             with_conditioning=True, 
             cross_attention_dim=12, # Condition with straight/hidden view  # flatR | flatT
         )
-        init_weights(self.unet3d_model, init_type="normal")
+        init_weights(self.unet3d_model, init_type="kaiming")
         
         self.ddpmsch = DDPMScheduler(
             num_train_timesteps=self.model_cfg.timesteps, 
@@ -385,7 +432,11 @@ class NVLightningModule(LightningModule):
         figure_ct_source_second = self.forward_screen(image3d=image3d, cameras=view_second)
 
         # timesteps = torch.randint(0, self.ddpmsch.num_train_timesteps, (B,), device=_device).long()  
-            
+        # if stage=='train':
+        #     timesteps = torch.randint(0, self.ddpmsch.num_train_timesteps, (B,), device=_device).long()  
+        # else:
+        #     timesteps = None
+        timesteps = None   
         # figure_xr_latent_hidden = torch.randn_like(figure_xr_source_hidden)
         # figure_ct_latent_hidden = torch.randn_like(figure_ct_source_hidden)
         # figure_ct_latent_random = torch.randn_like(figure_ct_source_random)
@@ -400,7 +451,7 @@ class NVLightningModule(LightningModule):
             image2d=figure_dx_source_concat, 
             cameras=camera_dx_render_concat, 
             noise=torch.zeros_like(figure_dx_source_concat), 
-            timesteps=None,
+            timesteps=timesteps,
         )
         volume_xr_reproj_hidden, \
         volume_ct_reproj_hidden, \
@@ -445,16 +496,15 @@ class NVLightningModule(LightningModule):
         pc2d_loss_all = self.p2dloss(figure_xr_reproj_hidden_hidden, image2d) \
                       + self.p2dloss(figure_xr_reproj_hidden_random, figure_ct_source_random) \
                       + self.p2dloss(figure_xr_reproj_hidden_second, figure_ct_source_second) \
-                      + self.p2dloss(figure_xr_reproj_hidden_hidden, figure_ct_source_hidden) \
-                    #   + self.p2dloss(figure_ct_reproj_hidden_hidden, figure_ct_source_hidden) \
-                    #   + self.p2dloss(figure_ct_reproj_hidden_random, figure_ct_source_random) \
-                    #   + self.p2dloss(figure_ct_reproj_hidden_second, figure_ct_source_second) \
-                    #   + self.p2dloss(figure_ct_reproj_random_hidden, figure_ct_source_hidden) \
-                    #   + self.p2dloss(figure_ct_reproj_random_random, figure_ct_source_random) \
-                    #   + self.p2dloss(figure_ct_reproj_random_second, figure_ct_source_second) \
-                    #   + self.p2dloss(figure_ct_reproj_second_hidden, figure_ct_source_hidden) \
-                    #   + self.p2dloss(figure_ct_reproj_second_random, figure_ct_source_random) \
-                    #   + self.p2dloss(figure_ct_reproj_second_second, figure_ct_source_second) 
+                      + self.p2dloss(figure_ct_reproj_hidden_hidden, figure_ct_source_hidden) \
+                      + self.p2dloss(figure_ct_reproj_hidden_random, figure_ct_source_random) \
+                      + self.p2dloss(figure_ct_reproj_hidden_second, figure_ct_source_second) \
+                      + self.p2dloss(figure_ct_reproj_random_hidden, figure_ct_source_hidden) \
+                      + self.p2dloss(figure_ct_reproj_random_random, figure_ct_source_random) \
+                      + self.p2dloss(figure_ct_reproj_random_second, figure_ct_source_second) \
+                      + self.p2dloss(figure_ct_reproj_second_hidden, figure_ct_source_hidden) \
+                      + self.p2dloss(figure_ct_reproj_second_random, figure_ct_source_random) \
+                      + self.p2dloss(figure_ct_reproj_second_second, figure_ct_source_second) 
         
         loss = self.train_cfg.alpha * im2d_loss_inv + self.train_cfg.gamma * im3d_loss_inv \
              + self.train_cfg.lamda * pc2d_loss_all + self.train_cfg.lamda * pc3d_loss_all  
@@ -473,7 +523,7 @@ class NVLightningModule(LightningModule):
                         figure_ct_source_hidden, 
                         figure_ct_source_random, 
                         figure_ct_source_second,
-                        zeros,
+                        figure_xr_reproj_hidden_random,
                         image3d[..., self.model_cfg.vol_shape // 2, :], 
                         image3d[..., self.model_cfg.vol_shape // 2, :], 
                         image3d[..., self.model_cfg.vol_shape // 2, :], 
