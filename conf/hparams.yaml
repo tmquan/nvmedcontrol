@@ -63,8 +63,8 @@ model:
   batch_size: ${data.batch_size}
   n_pts_per_ray: 800
   fov_depth: 400
-  min_depth: 6.5
-  max_depth: 9.5
+  min_depth: 6.1
+  max_depth: 9.9
   ndc_extent: 1.0
   fov: 16.0
 

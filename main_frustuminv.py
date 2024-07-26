@@ -444,13 +444,26 @@ class NVLightningModule(LightningModule):
         # figure_ct_latent_hidden = torch.randn_like(figure_ct_source_hidden)
         # figure_ct_latent_random = torch.randn_like(figure_ct_source_random)
         # figure_ct_latent_second = torch.randn_like(figure_ct_source_second)
-        figure_xr_latent_hidden = self.forward_screen(image3d=torch.randn_like(image3d), cameras=view_hidden)
-        figure_ct_latent_hidden = self.forward_screen(image3d=torch.randn_like(image3d), cameras=view_hidden)
-        figure_ct_latent_random = self.forward_screen(image3d=torch.randn_like(image3d), cameras=view_random)
-        figure_ct_latent_second = self.forward_screen(image3d=torch.randn_like(image3d), cameras=view_second)  
+        
+        # figure_xr_latent_hidden = self.forward_screen(image3d=torch.randn_like(image3d), cameras=view_hidden)
+        # figure_ct_latent_hidden = self.forward_screen(image3d=torch.randn_like(image3d), cameras=view_hidden)
+        # figure_ct_latent_random = self.forward_screen(image3d=torch.randn_like(image3d), cameras=view_random)
+        # figure_ct_latent_second = self.forward_screen(image3d=torch.randn_like(image3d), cameras=view_second)  
+
+        # # Run the forward pass
+        # figure_dx_latent_concat = torch.cat([figure_xr_latent_hidden, figure_ct_latent_hidden, figure_ct_latent_random, figure_ct_latent_second])
+        # figure_dx_source_concat = torch.cat([figure_xr_source_hidden, figure_ct_source_hidden, figure_ct_source_random, figure_ct_source_second])
+        # camera_dx_render_concat = join_cameras_as_batch([view_hidden, view_hidden, view_random, view_second])
+
+        # # For 3D with latent
+        # volume_dx_reproj_concat = self.forward_volume(
+        #     image2d=figure_dx_source_concat, 
+        #     cameras=camera_dx_render_concat, 
+        #     noise=figure_dx_latent_concat, 
+        #     timesteps=timesteps,
+        # )
 
         # Run the forward pass
-        figure_dx_latent_concat = torch.cat([figure_xr_latent_hidden, figure_ct_latent_hidden, figure_ct_latent_random, figure_ct_latent_second])
         figure_dx_source_concat = torch.cat([figure_xr_source_hidden, figure_ct_source_hidden, figure_ct_source_random, figure_ct_source_second])
         camera_dx_render_concat = join_cameras_as_batch([view_hidden, view_hidden, view_random, view_second])
 
@@ -458,8 +471,8 @@ class NVLightningModule(LightningModule):
         volume_dx_reproj_concat = self.forward_volume(
             image2d=figure_dx_source_concat, 
             cameras=camera_dx_render_concat, 
-            noise=figure_dx_latent_concat, 
-            timesteps=timesteps,
+            noise=torch.zeros_like(figure_dx_source_concat), 
+            timesteps=None,
         )
         volume_xr_reproj_hidden, \
         volume_ct_reproj_hidden, \
