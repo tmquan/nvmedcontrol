@@ -61,8 +61,8 @@ model:
   img_shape: ${data.img_shape}
   vol_shape: ${data.vol_shape}
   batch_size: ${data.batch_size}
-  n_pts_per_ray: 800
-  fov_depth: 800
+  n_pts_per_ray: 400
+  fov_depth: 400
   min_depth: 6.5
   max_depth: 9.5
   ndc_extent: 1.0
@@ -76,7 +76,7 @@ train:
   alpha: 1
   gamma: 1
   perceptual: false
-  lamda: 5e-3
+  lamda: 2e-3
   batch_size: ${data.batch_size}
   epochs: 400
   ema_decay: 0.9999 # `-1` disables it
