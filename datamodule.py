@@ -4,6 +4,9 @@ import glob
 from typing import Callable, Optional, Sequence
 from argparse import ArgumentParser
 
+from lightning import seed_everything
+seed = seed_everything(21, workers=True)
+
 # from torch.utils.data import Dataset, DataLoader
 from monai.data import CacheDataset, ThreadDataLoader
 from monai.data import list_data_collate
@@ -287,7 +290,7 @@ class UnpairedDataModule(LightningDataModule):
         self.train_loader = ThreadDataLoader(
             self.train_datasets,
             batch_size=self.batch_size,
-            num_workers=16,
+            num_workers=24,
             collate_fn=list_data_collate,
             shuffle=True,
         )
@@ -393,7 +396,7 @@ class UnpairedDataModule(LightningDataModule):
         self.val_loader = ThreadDataLoader(
             self.val_datasets,
             batch_size=self.batch_size,
-            num_workers=8,
+            num_workers=10,
             collate_fn=list_data_collate,
             shuffle=True,
         )
@@ -499,7 +502,7 @@ class UnpairedDataModule(LightningDataModule):
         self.test_loader = ThreadDataLoader(
             self.test_datasets,
             batch_size=self.batch_size,
-            num_workers=8,
+            num_workers=10,
             collate_fn=list_data_collate,
             shuffle=False,
         )
