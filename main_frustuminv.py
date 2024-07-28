@@ -289,6 +289,9 @@ class NVLightningModule(LightningModule):
             num_res_blocks=2,
             with_conditioning=True, 
             cross_attention_dim=12, # Condition with straight/hidden view  # flatR | flatT
+            upcast_attention=True,
+            use_flash_attention=True,
+            dropout_cattn=0.4
         )
         init_weights(self.unet3d_model, init_type="normal")
         
