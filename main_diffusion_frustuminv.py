@@ -445,6 +445,7 @@ class NVLightningModule(LightningModule):
 
         timesteps = torch.randint(0, self.ddpmsch.num_train_timesteps, (B,), device=_device).long()  
             
+<<<<<<< HEAD
         figure_xr_latent_hidden = torch.randn_like(figure_xr_source_hidden)
         figure_ct_latent_hidden = torch.randn_like(figure_ct_source_hidden)
         figure_ct_latent_random = torch.randn_like(figure_ct_source_random)
@@ -454,6 +455,17 @@ class NVLightningModule(LightningModule):
         # figure_ct_latent_hidden = self.forward_screen(image3d=torch.randn_like(image3d), cameras=view_hidden)
         # figure_ct_latent_random = self.forward_screen(image3d=torch.randn_like(image3d), cameras=view_random)
         # figure_ct_latent_second = self.forward_screen(image3d=torch.randn_like(image3d), cameras=view_second)
+=======
+        # figure_xr_latent_hidden = torch.randn_like(figure_xr_source_hidden)
+        # figure_ct_latent_hidden = torch.randn_like(figure_ct_source_hidden)
+        # figure_ct_latent_random = torch.randn_like(figure_ct_source_random)
+        # figure_ct_latent_second = torch.randn_like(figure_ct_source_second)
+        
+        figure_xr_latent_hidden = self.forward_screen(image3d=torch.randn_like(image3d), cameras=view_hidden)
+        figure_ct_latent_hidden = self.forward_screen(image3d=torch.randn_like(image3d), cameras=view_hidden)
+        figure_ct_latent_random = self.forward_screen(image3d=torch.randn_like(image3d), cameras=view_random)
+        figure_ct_latent_second = self.forward_screen(image3d=torch.randn_like(image3d), cameras=view_second)
+>>>>>>> 64b11d7 (Update the inference code gradio)
         
 
         # Run the forward pass

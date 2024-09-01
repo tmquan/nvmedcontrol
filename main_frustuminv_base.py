@@ -331,12 +331,12 @@ class NVLightningModule(LightningModule):
             pretrained=True,
         ).float()
 
-        # self.p30loss = PerceptualLoss(
-        #     spatial_dims=3, 
-        #     network_type="medicalnet_resnet50_23datasets", 
-        #     is_fake_3d=False, 
-        #     pretrained=True,
-        # ).float()
+        self.p30loss = PerceptualLoss(
+            spatial_dims=3, 
+            network_type="medicalnet_resnet50_23datasets", 
+            is_fake_3d=False, 
+            pretrained=True,
+        ).float()
 
         if self.model_cfg.phase=="finetune":
             pass
@@ -443,39 +443,26 @@ class NVLightningModule(LightningModule):
 
         # timesteps = torch.randint(0, self.ddpmsch.num_train_timesteps, (B,), device=_device).long()  
         timesteps = None
-        # if stage=='train':
-        #     # Generate a random number between 0 and 1
-        #     prob = torch.rand(1).item()
-        #     if prob < 0.5:
-        #         timesteps = torch.randint(0, self.ddpmsch.num_train_timesteps, (B,), device=_device).long()  
-            
-        # timesteps = None   
-        # figure_xr_latent_hidden = torch.randn_like(figure_xr_source_hidden)
-        # figure_ct_latent_hidden = torch.randn_like(figure_ct_source_hidden)
-        # figure_ct_latent_random = torch.randn_like(figure_ct_source_random)
-        # figure_ct_latent_second = torch.randn_like(figure_ct_source_second)
         
-        # figure_xr_latent_hidden = self.forward_screen(image3d=torch.randn_like(image3d), cameras=view_hidden)
-        # figure_ct_latent_hidden = self.forward_screen(image3d=torch.randn_like(image3d), cameras=view_hidden)
-        # figure_ct_latent_random = self.forward_screen(image3d=torch.randn_like(image3d), cameras=view_random)
-        # figure_ct_latent_second = self.forward_screen(image3d=torch.randn_like(image3d), cameras=view_second)  
-
         # # Run the forward pass
-        # figure_dx_latent_concat = torch.cat([figure_xr_latent_hidden, figure_ct_latent_hidden, figure_ct_latent_random, figure_ct_latent_second])
         # figure_dx_source_concat = torch.cat([figure_xr_source_hidden, figure_ct_source_hidden, figure_ct_source_random, figure_ct_source_second])
         # camera_dx_render_concat = join_cameras_as_batch([view_hidden, view_hidden, view_random, view_second])
 
-        # # For 3D with latent
+        # # For 3D
         # volume_dx_reproj_concat = self.forward_volume(
         #     image2d=figure_dx_source_concat, 
         #     cameras=camera_dx_render_concat, 
-        #     noise=figure_dx_latent_concat, 
-        #     timesteps=timesteps,
+        #     noise=torch.zeros_like(figure_dx_source_concat), 
+        #     timesteps=None,
         # )
-
+        # volume_xr_reproj_hidden, \
+        # volume_ct_reproj_hidden, \
+        # volume_ct_reproj_random, \
+        # volume_ct_reproj_second = torch.split(volume_dx_reproj_concat, B, dim=0)
+        
         # Run the forward pass
-        figure_dx_source_concat = torch.cat([figure_xr_source_hidden, figure_ct_source_hidden, figure_ct_source_random, figure_ct_source_second])
-        camera_dx_render_concat = join_cameras_as_batch([view_hidden, view_hidden, view_random, view_second])
+        figure_dx_source_concat = torch.cat([figure_ct_source_hidden, figure_ct_source_random, figure_ct_source_second])
+        camera_dx_render_concat = join_cameras_as_batch([view_hidden, view_random, view_second])
 
         # For 3D
         volume_dx_reproj_concat = self.forward_volume(
@@ -484,14 +471,21 @@ class NVLightningModule(LightningModule):
             noise=torch.zeros_like(figure_dx_source_concat), 
             timesteps=None,
         )
-        volume_xr_reproj_hidden, \
         volume_ct_reproj_hidden, \
         volume_ct_reproj_random, \
         volume_ct_reproj_second = torch.split(volume_dx_reproj_concat, B, dim=0)
         
-        figure_xr_reproj_hidden_hidden = self.forward_screen(image3d=volume_xr_reproj_hidden, cameras=view_hidden)
-        figure_xr_reproj_hidden_random = self.forward_screen(image3d=volume_xr_reproj_hidden, cameras=view_random)
-        figure_xr_reproj_hidden_second = self.forward_screen(image3d=volume_xr_reproj_hidden, cameras=view_second)
+        with torch.no_grad():
+            volume_xr_reproj_hidden = self.forward_volume(
+                image2d=figure_xr_source_hidden, 
+                cameras=view_hidden, 
+                noise=torch.zeros_like(figure_xr_source_hidden), 
+                timesteps=None,
+            )
+
+            figure_xr_reproj_hidden_hidden = self.forward_screen(image3d=volume_xr_reproj_hidden, cameras=view_hidden)
+            figure_xr_reproj_hidden_random = self.forward_screen(image3d=volume_xr_reproj_hidden, cameras=view_random)
+            figure_xr_reproj_hidden_second = self.forward_screen(image3d=volume_xr_reproj_hidden, cameras=view_second)
         
         figure_ct_reproj_hidden_hidden = self.forward_screen(image3d=volume_ct_reproj_hidden, cameras=view_hidden)
         figure_ct_reproj_hidden_random = self.forward_screen(image3d=volume_ct_reproj_hidden, cameras=view_random)
@@ -519,33 +513,9 @@ class NVLightningModule(LightningModule):
                       + F.l1_loss(figure_ct_reproj_second_random, figure_ct_source_random) \
                       + F.l1_loss(figure_ct_reproj_second_second, figure_ct_source_second) 
         
-<<<<<<< HEAD
-        pc3d_loss_all = self.p3dloss(volume_ct_reproj_hidden, image3d) \
-                      + self.p3dloss(volume_ct_reproj_random, image3d) \
-                      + self.p3dloss(volume_ct_reproj_second, image3d) \
-                      + self.p3dloss(volume_xr_reproj_hidden, image3d) 
-        
-        pc2d_loss_all = self.p2dloss(figure_ct_reproj_hidden_hidden, figure_ct_source_hidden) \
-                      + self.p2dloss(figure_ct_reproj_hidden_random, figure_ct_source_random) \
-                      + self.p2dloss(figure_ct_reproj_hidden_second, figure_ct_source_second) \
-                      + self.p2dloss(figure_ct_reproj_random_hidden, figure_ct_source_hidden) \
-                      + self.p2dloss(figure_ct_reproj_random_random, figure_ct_source_random) \
-                      + self.p2dloss(figure_ct_reproj_random_second, figure_ct_source_second) \
-                      + self.p2dloss(figure_ct_reproj_second_hidden, figure_ct_source_hidden) \
-                      + self.p2dloss(figure_ct_reproj_second_random, figure_ct_source_random) \
-                      + self.p2dloss(figure_ct_reproj_second_second, figure_ct_source_second) \
-                      + self.p2dloss(figure_xr_reproj_hidden_random, figure_ct_source_random) \
-                      + self.p2dloss(figure_xr_reproj_hidden_second, figure_ct_source_second) \
-                      + self.p2dloss(figure_xr_reproj_hidden_hidden, image2d) 
-=======
-        pc3d_loss_all = self.p25loss(volume_ct_reproj_hidden, image3d) \
-                      + self.p25loss(volume_ct_reproj_random, image3d) \
-                      + self.p25loss(volume_ct_reproj_second, image3d) \
-                      + self.p25loss(volume_xr_reproj_hidden, image3d) \
-                    #   + self.p30loss(volume_ct_reproj_hidden, image3d) \
-                    #   + self.p30loss(volume_ct_reproj_random, image3d) \
-                    #   + self.p30loss(volume_ct_reproj_second, image3d) \
-                    #   + self.p30loss(volume_xr_reproj_hidden, image3d) 
+        pc3d_loss_all = self.p30loss(volume_ct_reproj_hidden, image3d) \
+                      + self.p30loss(volume_ct_reproj_random, image3d) \
+                      + self.p30loss(volume_ct_reproj_second, image3d) 
         
         pc2d_loss_all = self.p20loss(figure_ct_reproj_hidden_hidden, figure_ct_source_hidden) \
                       + self.p20loss(figure_ct_reproj_hidden_random, figure_ct_source_random) \
@@ -555,11 +525,7 @@ class NVLightningModule(LightningModule):
                       + self.p20loss(figure_ct_reproj_random_second, figure_ct_source_second) \
                       + self.p20loss(figure_ct_reproj_second_hidden, figure_ct_source_hidden) \
                       + self.p20loss(figure_ct_reproj_second_random, figure_ct_source_random) \
-                      + self.p20loss(figure_ct_reproj_second_second, figure_ct_source_second) \
-                      + self.p20loss(figure_xr_reproj_hidden_hidden, image2d) \
-                    #   + self.p20loss(figure_xr_reproj_hidden_random, figure_ct_source_random) \
-                    #   + self.p20loss(figure_xr_reproj_hidden_second, figure_ct_source_second) \
->>>>>>> 64b11d7 (Update the inference code gradio)
+                      + self.p20loss(figure_ct_reproj_second_second, figure_ct_source_second) 
                       
         loss = self.train_cfg.alpha * im2d_loss_inv + self.train_cfg.gamma * im3d_loss_inv \
              + self.train_cfg.lamda * pc2d_loss_all + self.train_cfg.lamda * pc3d_loss_all  
