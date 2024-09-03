@@ -62,28 +62,28 @@ model:
   vol_shape: ${data.vol_shape}
   batch_size: ${data.batch_size}
   n_pts_per_ray: 800
-  fov_depth: 800
-  min_depth: 6.0
-  max_depth: 10.0
+  fov_depth: 400
+  min_depth: 6.1
+  max_depth: 9.9
   ndc_extent: 1.0
   fov: 16.0
 
 
 train:
   ckpt: ${resume_from_checkpoint}
-  strict: 1 if ${resume_from_checkpoint} is not None else 0
+  strict: 0 # if ${resume_from_checkpoint} is not None else 0
   lr: 1e-4
   alpha: 1
   gamma: 1
   perceptual: false
-  lamda: 5e-3
+  lamda: 2e-3
   batch_size: ${data.batch_size}
   epochs: 400
   ema_decay: 0.9999 # `-1` disables it
 
 
-# resume_from_checkpoint: "logs/ctproj/version_0/checkpoints/epoch=39-step=80000.ckpt"
-resume_from_checkpoint: null
+resume_from_checkpoint: "logs/diffusion/version_3/checkpoints/epoch=319-step=320000.ckpt"
+# resume_from_checkpoint: null
 
 trainer:
   accelerator: auto

@@ -1,7 +1,3 @@
-<<<<<<< HEAD
-=======
-
->>>>>>> 64b11d7 (Update the inference code gradio)
 hydra:
   output_subdir: null
   run:
@@ -65,46 +61,29 @@ model:
   img_shape: ${data.img_shape}
   vol_shape: ${data.vol_shape}
   batch_size: ${data.batch_size}
-<<<<<<< HEAD
-  n_pts_per_ray: 400
-  fov_depth: 400
-  min_depth: 6.5
-  max_depth: 9.5
-=======
   n_pts_per_ray: 800
   fov_depth: 400
   min_depth: 6.1
   max_depth: 9.9
->>>>>>> 64b11d7 (Update the inference code gradio)
   ndc_extent: 1.0
   fov: 16.0
 
 
 train:
   ckpt: ${resume_from_checkpoint}
-<<<<<<< HEAD
   strict: 0 # if ${resume_from_checkpoint} is not None else 0
-=======
-  strict: 1 if ${resume_from_checkpoint} is not None else 0
->>>>>>> 64b11d7 (Update the inference code gradio)
   lr: 1e-4
   alpha: 1
   gamma: 1
   perceptual: false
-  lamda: 2e-3
+  lamda: 1e-3
   batch_size: ${data.batch_size}
   epochs: 400
   ema_decay: 0.9999 # `-1` disables it
 
 
-<<<<<<< HEAD
-resume_from_checkpoint: "logs/diffusion/version_1/checkpoints/last.ckpt"
+resume_from_checkpoint: "logs/diffusion/version_3/checkpoints/epoch=319-step=320000.ckpt"
 # resume_from_checkpoint: null
-=======
-# resume_from_checkpoint: "logs/ctproj/version_0/checkpoints/epoch=39-step=80000.ckpt"
-# resume_from_checkpoint: null
-resume_from_checkpoint: "logs/diffusion/version_3/checkpoints/epoch=299-step=300000.ckpt"
->>>>>>> 64b11d7 (Update the inference code gradio)
 
 trainer:
   accelerator: auto

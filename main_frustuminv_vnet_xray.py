@@ -17,6 +17,8 @@ from typing import Optional
 from omegaconf import DictConfig, OmegaConf
 from contextlib import contextmanager, nullcontext
 
+import numpy as np 
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -24,7 +26,7 @@ import torch.nn.functional as F
 import torchvision
 
 from torchmetrics.functional.image import image_gradients
-from typing import Any, Callable, Dict, Optional, Tuple, List
+from typing import Any, Callable, Dict, Optional, OrderedDict, Tuple, List
 from lightning.pytorch.callbacks import ModelCheckpoint
 from lightning.pytorch.callbacks import LearningRateMonitor, EarlyStopping
 from lightning.pytorch.callbacks import StochasticWeightAveraging
@@ -43,8 +45,9 @@ from pytorch3d.renderer.camera_utils import join_cameras_as_batch
 # from generative.networks.nets import DiffusionModelUNet
 from omegaconf import OmegaConf
 
+from monai.apps import download_url
 from monai.losses import PerceptualLoss
-from monai.networks.nets import UNet
+from monai.networks.nets import UNet, VNet, SwinUNETR
 from monai.networks.layers.factories import Norm
 from monai.utils import optional_import
 tqdm, has_tqdm = optional_import("tqdm", name="tqdm")
@@ -254,15 +257,86 @@ class NVLightningModule(LightningModule):
             use_flash_attention=True,
             dropout_cattn=0.4
         )
-        init_weights(self.unet3d_model, init_type="normal")
-        
-        self.ddpmsch = DDPMScheduler(
-            num_train_timesteps=self.model_cfg.timesteps, 
-            prediction_type=self.model_cfg.prediction_type, 
-            schedule="scaled_linear_beta", 
-            beta_start=0.0005, 
-            beta_end=0.0195,
+        # init_weights(self.unet3d_model, init_type="normal")
+        # sself.unet3d_model.eval()
+        for param in self.unet3d_model.parameters():
+            param.requires_grad = False
+
+        self.vnet3d_model = VNet(
+            spatial_dims=3, 
+            in_channels=1,
+            out_channels=1,
         )
+
+        # self.vnet3d_model = SwinUNETR(
+        #     img_size=(self.model_cfg.vol_shape,
+        #               self.model_cfg.vol_shape, 
+        #               self.model_cfg.vol_shape),
+        #     in_channels=1,
+        #     out_channels=1,
+        #     feature_size=48,
+        #     drop_rate=0.0,
+        #     attn_drop_rate=0.0,
+        #     dropout_path_rate=0.0,
+        #     use_checkpoint=True,
+        # )
+
+        # use_pretrained = True
+        # if use_pretrained:
+        #     resource = (
+        #         "https://github.com/Project-MONAI/MONAI-extra-test-data/releases/download/0.8.1/ssl_pretrained_weights.pth"
+        #     )
+        #     dst = "./ssl_pretrained_weights.pth"
+        #     download_url(resource, dst)
+        #     pretrained_path = os.path.normpath(dst)
+        # # Load SwinUNETR backbone weights into SwinUNETR
+        # if use_pretrained is True:
+        #     print("Loading Weights from the Path {}".format(pretrained_path))
+        #     ssl_dict = torch.load(pretrained_path)
+        #     ssl_weights = ssl_dict["model"]
+
+        #     # Generate new state dict so it can be loaded to MONAI SwinUNETR Model
+        #     monai_loadable_state_dict = OrderedDict()
+        #     model_prior_dict = self.vnet3d_model.state_dict()
+        #     model_update_dict = model_prior_dict
+
+        #     del ssl_weights["encoder.mask_token"]
+        #     del ssl_weights["encoder.norm.weight"]
+        #     del ssl_weights["encoder.norm.bias"]
+        #     del ssl_weights["out.conv.conv.weight"]
+        #     del ssl_weights["out.conv.conv.bias"]
+
+        #     for key, value in ssl_weights.items():
+        #         if key[:8] == "encoder.":
+        #             if key[8:19] == "patch_embed":
+        #                 new_key = "swinViT." + key[8:]
+        #             else:
+        #                 new_key = "swinViT." + key[8:18] + key[20:]
+        #             monai_loadable_state_dict[new_key] = value
+        #         else:
+        #             monai_loadable_state_dict[key] = value
+
+        #     model_update_dict.update(monai_loadable_state_dict)
+        #     self.vnet3d_model.load_state_dict(model_update_dict, strict=True)
+        #     model_final_loaded_dict = self.vnet3d_model.state_dict()
+
+        #     # Safeguard test to ensure that weights got loaded successfully
+        #     layer_counter = 0
+        #     for k, _v in model_final_loaded_dict.items():
+        #         if k in model_prior_dict:
+        #             layer_counter = layer_counter + 1
+
+        #             old_wts = model_prior_dict[k]
+        #             new_wts = model_final_loaded_dict[k]
+
+        #             old_wts = old_wts.to("cpu").numpy()
+        #             new_wts = new_wts.to("cpu").numpy()
+        #             diff = np.mean(np.abs(old_wts, new_wts))
+        #             print("Layer {}, the update difference is: {}".format(k, diff))
+        #             if diff == 0.0:
+        #                 print("Warning: No difference found for layer {}".format(k))
+        #     print("Total updated layers {} / {}".format(layer_counter, len(model_prior_dict)))
+        #     print("Pretrained Weights Succesfully Loaded !")
 
         self.ddimsch = DDIMScheduler(
             num_train_timesteps=self.model_cfg.timesteps, 
@@ -277,6 +351,7 @@ class NVLightningModule(LightningModule):
             renderer=self.fwd_renderer, 
             model_cfg=self.model_cfg
         )
+
 
         self.p20loss = PerceptualLoss(
             spatial_dims=2, 
@@ -345,7 +420,7 @@ class NVLightningModule(LightningModule):
 
         mat = self.flatten_cameras(cameras, zero_translation=False)
 
-        out = self.inferer(
+        mid = self.inferer(
             inputs=image2d, 
             noise=noise, 
             diffusion_model=self.unet3d_model, 
@@ -354,6 +429,8 @@ class NVLightningModule(LightningModule):
             cam=cameras,
             return_volume=True,
         ) 
+        vol = self.vnet3d_model(mid)
+        out = mid + vol
         return out
     
     def forward_timing(self, image2d, cameras, noise=None, timesteps=None):
@@ -385,12 +462,7 @@ class NVLightningModule(LightningModule):
         elev_random = torch.rand_like(dist_random) - 0.5
         azim_random = torch.rand_like(dist_random) * 2 - 1  # from [0 1) to [-1 1)
         view_random = make_cameras_dea(dist_random, elev_random, azim_random, fov=self.model_cfg.fov, znear=self.model_cfg.min_depth, zfar=self.model_cfg.max_depth)
-
-        dist_second = 8 * torch.ones(B, device=_device)
-        elev_second = torch.rand_like(dist_second) - 0.5
-        azim_second = torch.rand_like(dist_second) * 2 - 1  # from [0 1) to [-1 1)
-        view_second = make_cameras_dea(dist_second, elev_second, azim_second, fov=self.model_cfg.fov, znear=self.model_cfg.min_depth, zfar=self.model_cfg.max_depth)
-
+    
         dist_hidden = 8 * torch.ones(B, device=_device)
         elev_hidden = torch.zeros(B, device=_device)
         azim_hidden = torch.zeros(B, device=_device)
@@ -400,8 +472,7 @@ class NVLightningModule(LightningModule):
         figure_xr_source_hidden = image2d
         figure_ct_source_hidden = self.forward_screen(image3d=image3d, cameras=view_hidden)
         figure_ct_source_random = self.forward_screen(image3d=image3d, cameras=view_random)
-        figure_ct_source_second = self.forward_screen(image3d=image3d, cameras=view_second)
-
+        
         # timesteps = torch.randint(0, self.ddpmsch.num_train_timesteps, (B,), device=_device).long()  
         timesteps = None
         # if stage=='train':
@@ -412,8 +483,8 @@ class NVLightningModule(LightningModule):
            
             
         # Run the forward pass
-        figure_dx_source_concat = torch.cat([figure_xr_source_hidden, figure_ct_source_hidden, figure_ct_source_random, figure_ct_source_second])
-        camera_dx_render_concat = join_cameras_as_batch([view_hidden, view_hidden, view_random, view_second])
+        figure_dx_source_concat = torch.cat([figure_xr_source_hidden, figure_ct_source_hidden, figure_ct_source_random])
+        camera_dx_render_concat = join_cameras_as_batch([view_hidden, view_hidden, view_random])
 
         # For 3D
         volume_dx_reproj_concat = self.forward_volume(
@@ -424,89 +495,53 @@ class NVLightningModule(LightningModule):
         )
         volume_xr_reproj_hidden, \
         volume_ct_reproj_hidden, \
-        volume_ct_reproj_random, \
-        volume_ct_reproj_second = torch.split(volume_dx_reproj_concat, B, dim=0)
-        
-        # # Run the forward pass
-        # figure_dx_source_concat = torch.cat([figure_ct_source_hidden, figure_ct_source_random, figure_ct_source_second])
-        # camera_dx_render_concat = join_cameras_as_batch([view_hidden, view_random, view_second])
-
-        # # For 3D
-        # volume_dx_reproj_concat = self.forward_volume(
-        #     image2d=figure_dx_source_concat, 
-        #     cameras=camera_dx_render_concat, 
-        #     noise=torch.zeros_like(figure_dx_source_concat), 
-        #     timesteps=None,
-        # )
-        # volume_ct_reproj_hidden, \
-        # volume_ct_reproj_random, \
-        # volume_ct_reproj_second = torch.split(volume_dx_reproj_concat, B, dim=0)
-        
-        # with torch.no_grad():
-        #     volume_xr_reproj_hidden = self.forward_volume(
-        #         image2d=figure_xr_source_hidden, 
-        #         cameras=view_hidden, 
-        #         noise=torch.zeros_like(figure_xr_source_hidden), 
-        #         timesteps=None,
-        #     )
-        
+        volume_ct_reproj_random = torch.split(volume_dx_reproj_concat, B, dim=0)
+           
         figure_xr_reproj_hidden_hidden = self.forward_screen(image3d=volume_xr_reproj_hidden, cameras=view_hidden)
         figure_xr_reproj_hidden_random = self.forward_screen(image3d=volume_xr_reproj_hidden, cameras=view_random)
-        figure_xr_reproj_hidden_second = self.forward_screen(image3d=volume_xr_reproj_hidden, cameras=view_second)
-    
+        
         figure_ct_reproj_hidden_hidden = self.forward_screen(image3d=volume_ct_reproj_hidden, cameras=view_hidden)
         figure_ct_reproj_hidden_random = self.forward_screen(image3d=volume_ct_reproj_hidden, cameras=view_random)
-        figure_ct_reproj_hidden_second = self.forward_screen(image3d=volume_ct_reproj_hidden, cameras=view_second)
         
         figure_ct_reproj_random_hidden = self.forward_screen(image3d=volume_ct_reproj_random, cameras=view_hidden)
         figure_ct_reproj_random_random = self.forward_screen(image3d=volume_ct_reproj_random, cameras=view_random)
-        figure_ct_reproj_random_second = self.forward_screen(image3d=volume_ct_reproj_random, cameras=view_second)
         
-        figure_ct_reproj_second_hidden = self.forward_screen(image3d=volume_ct_reproj_second, cameras=view_hidden)
-        figure_ct_reproj_second_random = self.forward_screen(image3d=volume_ct_reproj_second, cameras=view_random)
-        figure_ct_reproj_second_second = self.forward_screen(image3d=volume_ct_reproj_second, cameras=view_second)
-
         im3d_loss_inv = F.l1_loss(volume_ct_reproj_hidden, image3d) \
                       + F.l1_loss(volume_ct_reproj_random, image3d) \
-                      + F.l1_loss(volume_ct_reproj_second, image3d) 
         
         im2d_loss_inv = F.l1_loss(figure_ct_reproj_hidden_hidden, figure_ct_source_hidden) \
                       + F.l1_loss(figure_ct_reproj_hidden_random, figure_ct_source_random) \
-                      + F.l1_loss(figure_ct_reproj_hidden_second, figure_ct_source_second) \
                       + F.l1_loss(figure_ct_reproj_random_hidden, figure_ct_source_hidden) \
                       + F.l1_loss(figure_ct_reproj_random_random, figure_ct_source_random) \
-                      + F.l1_loss(figure_ct_reproj_random_second, figure_ct_source_second) \
-                      + F.l1_loss(figure_ct_reproj_second_hidden, figure_ct_source_hidden) \
-                      + F.l1_loss(figure_ct_reproj_second_random, figure_ct_source_random) \
-                      + F.l1_loss(figure_ct_reproj_second_second, figure_ct_source_second) 
+                      + F.l1_loss(figure_xr_reproj_hidden_hidden, figure_xr_source_hidden) \
         
         pc3d_loss_all = self.p30loss(volume_ct_reproj_hidden, image3d) \
                       + self.p30loss(volume_ct_reproj_random, image3d) \
-                      + self.p30loss(volume_ct_reproj_second, image3d) \
                       + self.p25loss(volume_ct_reproj_hidden, image3d) \
                       + self.p25loss(volume_ct_reproj_random, image3d) \
-                      + self.p25loss(volume_ct_reproj_second, image3d) \
                       + self.p30loss(volume_xr_reproj_hidden, image3d) \
                       + self.p25loss(volume_xr_reproj_hidden, image3d) \
         
         pc2d_loss_all = self.p20loss(figure_ct_reproj_hidden_hidden, figure_ct_source_hidden) \
                       + self.p20loss(figure_ct_reproj_hidden_random, figure_ct_source_random) \
-                      + self.p20loss(figure_ct_reproj_hidden_second, figure_ct_source_second) \
                       + self.p20loss(figure_ct_reproj_random_hidden, figure_ct_source_hidden) \
                       + self.p20loss(figure_ct_reproj_random_random, figure_ct_source_random) \
-                      + self.p20loss(figure_ct_reproj_random_second, figure_ct_source_second) \
-                      + self.p20loss(figure_ct_reproj_second_hidden, figure_ct_source_hidden) \
-                      + self.p20loss(figure_ct_reproj_second_random, figure_ct_source_random) \
-                      + self.p20loss(figure_ct_reproj_second_second, figure_ct_source_second) \
                       + self.p20loss(figure_xr_reproj_hidden_hidden, image2d) \
                       + self.p20loss(figure_xr_reproj_hidden_random, figure_ct_source_random) \
-                      + self.p20loss(figure_xr_reproj_hidden_second, figure_ct_source_second)       
                       
+        # pc3d_loss_all = self.p30loss(volume_ct_reproj_hidden, image3d) \
+        #               + self.p30loss(volume_ct_reproj_random, image3d) \
+        #               + self.p30loss(volume_ct_reproj_second, image3d) \
+        #               + self.p25loss(volume_ct_reproj_hidden, image3d) \
+        #               + self.p25loss(volume_ct_reproj_random, image3d) \
+        #               + self.p25loss(volume_ct_reproj_second, image3d) 
+        
+        # pc2d_loss_all = self.p20loss(figure_xr_reproj_hidden_hidden, image2d)   
+        #         
         loss = self.train_cfg.alpha * im2d_loss_inv + self.train_cfg.gamma * im3d_loss_inv \
              + self.train_cfg.lamda * pc2d_loss_all + self.train_cfg.lamda * pc3d_loss_all  
 
-        # pc2d_loss_all = self.p20loss(figure_xr_reproj_hidden_hidden, image2d) 
-
+        
         # loss = self.train_cfg.alpha * im2d_loss_inv + self.train_cfg.gamma * im3d_loss_inv \
         #      + self.train_cfg.lamda * pc2d_loss_all  
         
@@ -523,9 +558,7 @@ class NVLightningModule(LightningModule):
                         figure_xr_source_hidden, 
                         figure_ct_source_hidden, 
                         figure_ct_source_random, 
-                        figure_ct_source_second,
                         figure_xr_reproj_hidden_random,
-                        image3d[..., self.model_cfg.vol_shape // 2, :], 
                         image3d[..., self.model_cfg.vol_shape // 2, :], 
                         image3d[..., self.model_cfg.vol_shape // 2, :], 
                     ], dim=-2).transpose(2, 3),
@@ -533,11 +566,9 @@ class NVLightningModule(LightningModule):
                         figure_xr_reproj_hidden_hidden, 
                         figure_ct_reproj_hidden_hidden, 
                         figure_ct_reproj_hidden_random, 
-                        figure_ct_reproj_hidden_second,
                         volume_xr_reproj_hidden[..., self.model_cfg.vol_shape // 2, :], 
                         volume_ct_reproj_hidden[..., self.model_cfg.vol_shape // 2, :], 
                         volume_ct_reproj_random[..., self.model_cfg.vol_shape // 2, :], 
-                        volume_ct_reproj_second[..., self.model_cfg.vol_shape // 2, :], 
                     ], dim=-2).transpose(2, 3),
                 ], dim=-2)
 

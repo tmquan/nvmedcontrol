@@ -40,8 +40,8 @@ def generate_rotating_volume(model, volume, n_frames = 256, device=None):
             elev, 
             azim, 
             fov=16.0, 
-            znear=6.5, 
-            zfar=9.5
+            znear=6.1, 
+            zfar=9.9
         ).to(device)
         screen = model.forward_screen(
             image3d=volume, 
@@ -69,8 +69,15 @@ def main():
         sample = sample.unsqueeze(0)
         # print(sample.shape)
 
-        checkpoint_path = "logs/diffusion/version_3/checkpoints/last.ckpt"
-        model = NVLightningModule.load_from_checkpoint(checkpoint_path, strict=False).to(device)
+        checkpoint_path = "logs/diffusion/version_4/checkpoints/last.ckpt"
+        # model = NVLightningModule.load_from_checkpoint(checkpoint_path, strict=False).to(device)
+        if checkpoint_path:
+            print("Loading.. ", checkpoint_path)
+            # checkpoint = torch.load(checkpoint_path, map_location=torch.device("cpu"))["state_dict"]
+            # state_dict = {k: v for k, v in checkpoint.items() if k in self.state_dict()}
+            # self.load_state_dict(state_dict, strict=False)
+            model = NVLightningModule.load_from_checkpoint(checkpoint_path, strict=False).to(device)
+            
         dist_hidden = 8 * torch.ones(B, device=device)
         elev_hidden = torch.zeros(B, device=device)
         azim_hidden = torch.zeros(B, device=device)
@@ -79,8 +86,8 @@ def main():
             elev_hidden, 
             azim_hidden, 
             fov=16.0, 
-            znear=6.5, 
-            zfar=9.5
+            znear=6.1, 
+            zfar=9.9,
         ).to(device)
 
         output = model.forward_volume(
@@ -94,7 +101,7 @@ def main():
             volume=output,
             n_frames=256,
             device=device, 
-        )
+        ).squeeze().detach().cpu()
         print(rotates.shape)
         
         outputs = output.clamp_(0, 1).squeeze().detach().cpu() #.numpy()
@@ -117,27 +124,15 @@ def main():
             fps = 32.0
         )
 
-        # video_file = cv2.VideoWriter(
-        #     video_name, 
-        #     cv2.VideoWriter_fourcc(*'H264'), 
-        #     1, 
-        #     (width, height)
+        # concat = torch.cat([
+        #     torch.cat([rotates, outputs.transpose(1, 2)], dim=1),
+        #     torch.cat([outputs.transpose(1, 2).transpose(0, 1), outputs.transpose(1, 2).transpose(0, 2)], dim=1),
+        # ], dim=2)
+        # torchvision.io.write_video(
+        #     filename = video_name,
+        #     video_array = concat,
+        #     fps = 32.0
         # )
-
-        # # Create a video with n frames of the same image
-        # for t in tqdm(range(len(rotates))):
-        #     # frame = np.concatenate([
-        #     #         np.concatenate([rotates[t], outputs[t,:,:]], axis=0),
-        #     #         np.concatenate([outputs[:,t,:], outputs[:,:,t]], axis=0)
-        #     # ], axis=1)
-
-        #     # frame = (255 * frame).astype(np.uint8)
-        #     frame = image
-        #     frame = cv2.cvtColor(frame, cv2.COLOR_GRAY2BGR)
-        #     # frame = image
-        #     video_file.write(frame)
-        # video_file.release()
-
         return video_name
        
     # Load the Lena image
@@ -151,9 +146,25 @@ def main():
             # "data/ChestXRLungSegmentation/VinDr/v1/processed/test/images/0a8dc3de200bc767169b73a6ab91e948.png",
             # "data/ChestXRLungSegmentation/VinDr/v1/processed/test/images/0a2e45455fe2c76ddbbb5f38ab35f6f2.png",
             # "data/ChestXRLungSegmentation/VinDr/v1/processed/test/images/0a6fd1c1d71ff6f9e0f0afa746e223e4.png",
-            "data/ChestXRLungSegmentation/VinDr/v1/processed/test/images/0b2cc81ad04ca2e91f2a8626b645cad8.png",
-            "data/ChestXRLungSegmentation/VinDr/v1/processed/test/images/1b4407d5e1e9ec1e602c75fc80b7b001.png",
-        ],
+            # "data/ChestXRLungSegmentation/VinDr/v1/processed/test/images/0b2cc81ad04ca2e91f2a8626b645cad8.png",
+            # "data/ChestXRLungSegmentation/VinDr/v1/processed/test/images/1b4407d5e1e9ec1e602c75fc80b7b001.png",
+            "demo/xr/0ccde8751e5952ea6bb047378dcbabba.png",
+            "demo/xr/0cd194f171015c0eb824a1bd057f440b.png",
+            "demo/xr/0ce1b656d171e2e760340f29f4a064e9.png",
+            "demo/xr/0ce3ae82d1f5c69f253432c5ec47c1be.png",
+            # "demo/xr/0d0561a5e6379aba13d71e50b6b70747.png",
+            # "demo/xr/12d598be7970fc60aa76bd7c21eef405.png",
+            # "demo/xr/12df63c7ee868a1677ba273c3c775476.png",
+            # "demo/xr/12e58d45f46e91b639072bd5a86bea3e.png",
+            "demo/ct/data_ChestXRLungSegmentation_MOSMED_processed_train_images_CT-0_study_0001.png",
+            "demo/ct/data_ChestXRLungSegmentation_MOSMED_processed_train_images_CT-0_study_0002.png",
+            "demo/ct/data_ChestXRLungSegmentation_MOSMED_processed_train_images_CT-0_study_0003.png",
+            "demo/ct/data_ChestXRLungSegmentation_MOSMED_processed_train_images_CT-0_study_0004.png",
+            # "demo/ct/data_ChestXRLungSegmentation_MOSMED_processed_train_images_CT-0_study_0005.png",
+            # "demo/ct/data_ChestXRLungSegmentation_MOSMED_processed_train_images_CT-0_study_0006.png",
+            # "demo/ct/data_ChestXRLungSegmentation_MOSMED_processed_train_images_CT-0_study_0007.png",
+            # "demo/ct/data_ChestXRLungSegmentation_MOSMED_processed_train_images_CT-0_study_0008.png",
+       ],
         outputs=gr.Video()
     )
 
