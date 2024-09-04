@@ -9,7 +9,7 @@ from monai.transforms import (
     CropForeground, Zoom, Resize, DivisiblePad, ToTensor
 )
 
-from main_frustuminv_xray import NVLightningModule, make_cameras_dea
+from main_frustuminv_vnet_xray import NVLightningModule, make_cameras_dea
 
 # Define the transformation pipeline for "image2d"
 val_transforms = Compose(
@@ -77,7 +77,7 @@ def main():
             # state_dict = {k: v for k, v in checkpoint.items() if k in self.state_dict()}
             # self.load_state_dict(state_dict, strict=False)
             model = NVLightningModule.load_from_checkpoint(checkpoint_path, strict=False).to(device)
-            
+
         dist_hidden = 8 * torch.ones(B, device=device)
         elev_hidden = torch.zeros(B, device=device)
         azim_hidden = torch.zeros(B, device=device)
@@ -94,7 +94,7 @@ def main():
             image2d=sample, 
             cameras=view_hidden, 
             noise=torch.zeros_like(sample),
-        )
+        )[:,[0],...]
     
         rotates = generate_rotating_volume(
             model=model, 

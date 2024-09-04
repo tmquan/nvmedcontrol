@@ -258,15 +258,30 @@ class NVLightningModule(LightningModule):
             dropout_cattn=0.4
         )
         # init_weights(self.unet3d_model, init_type="normal")
-        # sself.unet3d_model.eval()
+        # self.unet3d_model.eval()
         for param in self.unet3d_model.parameters():
             param.requires_grad = False
 
-        self.vnet3d_model = VNet(
-            spatial_dims=3, 
+        self.vnet3d_model = UNet(
+            spatial_dims=3,
             in_channels=1,
-            out_channels=1,
+            out_channels=1, 
+            channels=(64, 128, 256, 512, 1024), 
+            strides= (2, 2, 2, 2), #(2, 2, 2, 2, 2),
+            num_res_units=2,
+            kernel_size=3,
+            up_kernel_size=3,
+            act=("LeakyReLU", {"inplace": True}),
+            norm=Norm.BATCH,
+            dropout=0.5,
+            # mode="pixelshuffle",
         )
+
+        # self.vnet3d_model = VNet(
+        #     spatial_dims=3, 
+        #     in_channels=1,
+        #     out_channels=1,
+        # )
 
         # self.vnet3d_model = SwinUNETR(
         #     img_size=(self.model_cfg.vol_shape,
@@ -430,9 +445,10 @@ class NVLightningModule(LightningModule):
             return_volume=True,
         ) 
         vol = self.vnet3d_model(mid)
-        out = mid + vol
+        out = 0.5*(mid + vol)
         return out
-    
+        # return torch.cat([mid, vol], dim=1)
+
     def forward_timing(self, image2d, cameras, noise=None, timesteps=None):
         _device = image2d.device
         B = image2d.shape[0]
@@ -497,14 +513,14 @@ class NVLightningModule(LightningModule):
         volume_ct_reproj_hidden, \
         volume_ct_reproj_random = torch.split(volume_dx_reproj_concat, B, dim=0)
            
-        figure_xr_reproj_hidden_hidden = self.forward_screen(image3d=volume_xr_reproj_hidden, cameras=view_hidden)
-        figure_xr_reproj_hidden_random = self.forward_screen(image3d=volume_xr_reproj_hidden, cameras=view_random)
+        figure_xr_reproj_hidden_hidden = self.forward_screen(image3d=volume_xr_reproj_hidden[:,[0],...], cameras=view_hidden)
+        figure_xr_reproj_hidden_random = self.forward_screen(image3d=volume_xr_reproj_hidden[:,[0],...], cameras=view_random)
         
-        figure_ct_reproj_hidden_hidden = self.forward_screen(image3d=volume_ct_reproj_hidden, cameras=view_hidden)
-        figure_ct_reproj_hidden_random = self.forward_screen(image3d=volume_ct_reproj_hidden, cameras=view_random)
+        figure_ct_reproj_hidden_hidden = self.forward_screen(image3d=volume_ct_reproj_hidden[:,[0],...], cameras=view_hidden)
+        figure_ct_reproj_hidden_random = self.forward_screen(image3d=volume_ct_reproj_hidden[:,[0],...], cameras=view_random)
         
-        figure_ct_reproj_random_hidden = self.forward_screen(image3d=volume_ct_reproj_random, cameras=view_hidden)
-        figure_ct_reproj_random_random = self.forward_screen(image3d=volume_ct_reproj_random, cameras=view_random)
+        figure_ct_reproj_random_hidden = self.forward_screen(image3d=volume_ct_reproj_random[:,[0],...], cameras=view_hidden)
+        figure_ct_reproj_random_random = self.forward_screen(image3d=volume_ct_reproj_random[:,[0],...], cameras=view_random)
         
         im3d_loss_inv = F.l1_loss(volume_ct_reproj_hidden, image3d) \
                       + F.l1_loss(volume_ct_reproj_random, image3d) \
@@ -515,12 +531,12 @@ class NVLightningModule(LightningModule):
                       + F.l1_loss(figure_ct_reproj_random_random, figure_ct_source_random) \
                       + F.l1_loss(figure_xr_reproj_hidden_hidden, figure_xr_source_hidden) \
         
-        pc3d_loss_all = self.p30loss(volume_ct_reproj_hidden, image3d) \
-                      + self.p30loss(volume_ct_reproj_random, image3d) \
-                      + self.p25loss(volume_ct_reproj_hidden, image3d) \
-                      + self.p25loss(volume_ct_reproj_random, image3d) \
-                      + self.p30loss(volume_xr_reproj_hidden, image3d) \
-                      + self.p25loss(volume_xr_reproj_hidden, image3d) \
+        pc3d_loss_all = self.p30loss(volume_ct_reproj_hidden[:,[0],...], image3d) \
+                      + self.p30loss(volume_ct_reproj_random[:,[0],...], image3d) \
+                      + self.p25loss(volume_ct_reproj_hidden[:,[0],...], image3d) \
+                      + self.p25loss(volume_ct_reproj_random[:,[0],...], image3d) \
+                      + self.p30loss(volume_xr_reproj_hidden[:,[0],...], image3d) \
+                      + self.p25loss(volume_xr_reproj_hidden[:,[0],...], image3d) \
         
         pc2d_loss_all = self.p20loss(figure_ct_reproj_hidden_hidden, figure_ct_source_hidden) \
                       + self.p20loss(figure_ct_reproj_hidden_random, figure_ct_source_random) \
@@ -559,16 +575,16 @@ class NVLightningModule(LightningModule):
                         figure_ct_source_hidden, 
                         figure_ct_source_random, 
                         figure_xr_reproj_hidden_random,
-                        image3d[..., self.model_cfg.vol_shape // 2, :], 
-                        image3d[..., self.model_cfg.vol_shape // 2, :], 
+                        image3d[:, [0], :, self.model_cfg.vol_shape // 2, :], 
+                        image3d[:, [0], :, self.model_cfg.vol_shape // 2, :], 
                     ], dim=-2).transpose(2, 3),
                     torch.cat([
                         figure_xr_reproj_hidden_hidden, 
                         figure_ct_reproj_hidden_hidden, 
                         figure_ct_reproj_hidden_random, 
-                        volume_xr_reproj_hidden[..., self.model_cfg.vol_shape // 2, :], 
-                        volume_ct_reproj_hidden[..., self.model_cfg.vol_shape // 2, :], 
-                        volume_ct_reproj_random[..., self.model_cfg.vol_shape // 2, :], 
+                        volume_xr_reproj_hidden[:, [0], :, self.model_cfg.vol_shape // 2, :], 
+                        volume_ct_reproj_hidden[:, [0], :, self.model_cfg.vol_shape // 2, :], 
+                        volume_ct_reproj_random[:, [0], :, self.model_cfg.vol_shape // 2, :], 
                     ], dim=-2).transpose(2, 3),
                 ], dim=-2)
 
